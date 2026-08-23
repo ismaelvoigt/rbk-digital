@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+:root {
+  --rbk-red: #e30613;
+  --rbk-red-dark: #b9040e;
+  --rbk-orange: #ff7a00;
+  --rbk-yellow: #f4b400;
+  --rbk-ink: #242424;
+  --rbk-muted: #6b7280;
+  --rbk-bg: #f6f7f9;
+  --rbk-card: #ffffff;
+  --rbk-border: #e5e7eb;
+  --rbk-green: #16a34a;
+  --rbk-amber: #d97706;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--rbk-bg); }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255,122,0,.055), transparent 26rem),
+    radial-gradient(circle at 92% 0%, rgba(227,6,19,.045), transparent 24rem),
+    var(--rbk-bg);
+  color: var(--rbk-ink);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button, input, textarea { font: inherit; }
+
+::selection {
+  background: rgba(227,6,19,.16);
+  color: var(--rbk-ink);
+}
+
+.rbk-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255,122,0,.055), transparent 25rem),
+    radial-gradient(circle at 90% 0%, rgba(227,6,19,.045), transparent 25rem),
+    var(--rbk-bg);
+}
+
+.rbk-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid rgba(229,231,235,.9);
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(14px);
+}
+
+.rbk-container { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+
+.rbk-card {
+  border: 1px solid var(--rbk-border);
+  background: var(--rbk-card);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(20,24,31,.055);
+}
+
+.rbk-card-hover {
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.rbk-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 38px rgba(20,24,31,.09);
+  border-color: rgba(227,6,19,.18);
+}
+
+.rbk-primary {
+  background: var(--rbk-red);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(227,6,19,.18);
+}
+.rbk-primary:hover { background: var(--rbk-red-dark); }
+
+.rbk-secondary {
+  background: #fff;
+  color: var(--rbk-ink);
+  border: 1px solid var(--rbk-border);
+}
+.rbk-secondary:hover { background: #fafafa; border-color: #d1d5db; }
+
+.rbk-input {
+  width: 100%;
+  border: 1px solid #d6d9df;
+  background: #fff;
+  color: var(--rbk-ink);
+  border-radius: 13px;
+  padding: 13px 14px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.rbk-input:focus {
+  border-color: rgba(227,6,19,.62);
+  box-shadow: 0 0 0 4px rgba(227,6,19,.08);
+}
+
+.rbk-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ff1f2d, #ff7a00);
+  color: #fff;
+  font: 800 17px Georgia, serif;
+  box-shadow: 0 7px 16px rgba(227,6,19,.2);
+}
+
+.rbk-progress {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eceff2;
+}
+.rbk-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--rbk-red), var(--rbk-orange));
+}
+
+.rbk-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 700;
+}
