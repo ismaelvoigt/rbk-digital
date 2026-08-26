@@ -7,7 +7,14 @@ import { createClient } from "../../../../lib/supabase/client";
 import { RbkBrand } from "../../../../components/RbkBrand";
 import DocumentUploadCard from "../../../../components/documentos/DocumentUploadCard";
 
-type Documento = { id: string; categoria: string; status: string };
+type Documento = {
+  id: string;
+  categoria: string;
+  status: string;
+  nome_arquivo: string | null;
+  caminho_arquivo: string | null;
+  url: string | null;
+};
 
 const categorias = [
   { id: "documento_cliente", titulo: "Documento do Cliente", sigla: "CLI" },
@@ -36,9 +43,37 @@ export default function DocumentosAutorizacao() {
       if (!autorizacao) { setCarregando(false); return; }
       setNumeroAutorizacao(autorizacao.numero_autorizacao);
 
-      const { data: documentosSalvos } = await supabase.from("documentos")
-        .select("id, categoria, status").eq("autorizacao_id", id);
-      setDocumentos(documentosSalvos ?? []);
+      const { data: documentosSalvos, error: documentosError } = await supabase
+  .from("documentos")
+  .select("id, categoria, status, nome_arquivo, caminho_arquivo")
+  .eq("autorizacao_id", id);
+
+if (documentosError) {
+  console.error("Erro ao carregar documentos:", documentosError);
+  setDocumentos([]);
+} else {
+  const documentosComUrl = await Promise.all(
+    (documentosSalvos ?? []).map(async (documento) => {
+      if (!documento.caminho_arquivo) {
+        return {
+          ...documento,
+          url: null,
+        };
+      }
+
+      const { data: urlData } = await supabase.storage
+        .from("documentos")
+        .createSignedUrl(documento.caminho_arquivo, 3600);
+
+      return {
+        ...documento,
+        url: urlData?.signedUrl ?? null,
+      };
+    })
+  );
+
+  setDocumentos(documentosComUrl);
+}
       setCarregando(false);
     }
     carregarDados();
@@ -141,6 +176,77 @@ status={statusCategoria("outros")}
 </div>
         </section>
 
+    {documentos.length > 0 && (
+      <section className="mt-8">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-900">
+            Documentos arquivados
+          </h2>
+
+          <p className="mt-1 text-sm text-gray-500">
+            Documentos vinculados a esta autorização e armazenados com segurança.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {documentos.map((documento) => {
+            const categoria = categorias.find(
+              (c) => c.id === documento.categoria
+            );
+
+            return (
+              <div
+                key={documento.id}
+                className="rbk-card p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-600 font-bold">
+                      DOC
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                        {categoria?.titulo ?? "Documento"}
+                      </p>
+
+                      <p className="mt-1 truncate text-sm font-semibold text-gray-800">
+                        {documento.nome_arquivo ?? "Arquivo sem nome"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="rounded-full bg-green-50 px-3 py-1 font-semibold text-green-700">
+                      ✓ Arquivado
+                    </span>
+
+                    <span className="text-gray-400">
+                      {documento.status === "recebido"
+                        ? "Recebido"
+                        : documento.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 gap-2">
+                  {documento.url && (
+                    <a
+                      href={documento.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rbk-primary inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-bold"
+                    >
+                      Visualizar
+                    </a>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    )}
         <button type="button" onClick={() => router.push(`/autorizacoes/${id}/documentos/sucesso`)}
           className="rbk-primary mt-6 w-full rounded-[13px] px-6 py-4 text-sm font-bold">
           Salvar documentos
