@@ -134,7 +134,8 @@ if (documentosError) {
 
   <DocumentUploadCard
     autorizacaoId={id}
-    categoria="documento_cliente"
+numeroAutorizacao={numeroAutorizacao}   
+ categoria="documento_cliente"
     title="Doc. Cliente (RG/CNH)"
     accent="red"
 status={statusCategoria("documento_cliente")}
@@ -142,6 +143,7 @@ status={statusCategoria("documento_cliente")}
 
   <DocumentUploadCard
     autorizacaoId={id}
+numeroAutorizacao={numeroAutorizacao}
     categoria="receita_medica"
     title="Receita Médica"
     accent="orange"
@@ -150,6 +152,7 @@ status={statusCategoria("receita_medica")}
 
   <DocumentUploadCard
     autorizacaoId={id}
+numeroAutorizacao={numeroAutorizacao}
     categoria="cupom_fiscal"
     title="Cupom Fiscal"
     accent="green"
@@ -158,6 +161,7 @@ status={statusCategoria("cupom_fiscal")}
 
   <DocumentUploadCard
     autorizacaoId={id}
+numeroAutorizacao={numeroAutorizacao}
     categoria="cupom_vinculado"
     title="Cupom Vinculado"
     accent="blue"
@@ -166,6 +170,7 @@ status={statusCategoria("cupom_vinculado")}
 
   <DocumentUploadCard
     autorizacaoId={id}
+numeroAutorizacao={numeroAutorizacao}
     categoria="outros"
     title="Outros Documentos"
     accent="purple"

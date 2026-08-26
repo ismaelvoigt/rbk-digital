@@ -19,6 +19,7 @@ type DocumentUploadCardProps = {
 
   // Compatibilidade com a tela antiga
   autorizacaoId?: string;
+numeroAutorizacao?: string;
   categoria?: Categoria;
 
   // Usado pela nova tela
@@ -46,6 +47,7 @@ export default function DocumentUploadCard({
   accent = "red",
 status = "pendente",
   autorizacaoId,
+numeroAutorizacao,
   categoria,
   onFileChange,
 }: DocumentUploadCardProps) {
@@ -58,6 +60,33 @@ status = "pendente",
   const [preview, setPreview] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+
+function gerarNomeArquivo(
+  numero: string,
+  categoria: Categoria,
+  arquivoOriginal: string
+) {
+  const extensao = arquivoOriginal.includes(".")
+    ? arquivoOriginal.substring(arquivoOriginal.lastIndexOf("."))
+    : "";
+
+  const nomesCategorias: Record<Categoria, string> = {
+    documento_cliente: "documento_do_cliente",
+    receita_medica: "receita_medica",
+    cupom_fiscal: "cupom_fiscal",
+    cupom_vinculado: "cupom_vinculado",
+    outros: "outros_documentos",
+  };
+
+  const hoje = new Date();
+
+  const dia = String(hoje.getDate()).padStart(2, "0");
+  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+  const ano = hoje.getFullYear();
+
+const numeroFormatado = numero.trim();
+  return `${numeroFormatado}_${nomesCategorias[categoria]}_${dia}_${mes}_${ano}${extensao}`;
+}
 
   async function selecionarArquivo(selectedFile?: File) {
     if (!selectedFile) return;
@@ -104,9 +133,15 @@ status = "pendente",
         return;
       }
 
-      const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSeguro(
-        selectedFile.name
-      )}`;
+      const nomeArquivo = gerarNomeArquivo(
+  numeroAutorizacao || "sem_numero",
+  categoria,
+  selectedFile.name
+);
+
+const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSeguro(
+  nomeArquivo
+)}`;
 
       const { error: uploadError } = await supabase.storage
         .from("documentos")
@@ -125,7 +160,7 @@ status = "pendente",
         .insert({
           autorizacao_id: autorizacaoId,
           categoria,
-          nome_arquivo: selectedFile.name,
+          nome_arquivo: nomeArquivo,
           caminho_arquivo: caminho,
           status: "recebido",
         });
