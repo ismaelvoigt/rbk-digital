@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/client";
 import { RbkBrand } from "../../../../components/RbkBrand";
+import DocumentUploadCard from "../../../../components/documentos/DocumentUploadCard";
 
 type Documento = { id: string; categoria: string; status: string };
 
@@ -47,12 +48,14 @@ export default function DocumentosAutorizacao() {
   const percentual = Math.round((categoriasRecebidas / categorias.length) * 100);
 
   function statusCategoria(categoriaId: string) {
-    const documento = documentos.find((item) => item.categoria === categoriaId);
-    if (!documento) return "Adicionar";
-    if (documento.status === "recebido") return "Recebido";
-    if (documento.status === "atencao") return "Atenção";
-    return "Pendente";
-  }
+  const documento = documentos.find((item) => item.categoria === categoriaId);
+
+  if (!documento) return "pendente";
+  if (documento.status === "recebido") return "recebido";
+  if (documento.status === "atencao") return "atencao";
+
+  return "pendente";
+}
 
   if (carregando) return <main className="rbk-shell min-h-screen p-8 text-sm text-gray-500">Carregando documentos...</main>;
 
@@ -89,31 +92,53 @@ export default function DocumentosAutorizacao() {
             <p className="mt-1 text-sm text-gray-500">Acompanhe cada categoria de documento vinculada à autorização.</p>
           </div>
 
-          <div className="space-y-3">
-            {categorias.map((categoria) => {
-              const status = statusCategoria(categoria.id);
-              const recebido = status === "Recebido";
-              const atencao = status === "Atenção";
-              return (
-                <div key={categoria.id} className="rbk-card rbk-card-hover p-5">
-                  <div className="flex items-center gap-4">
-                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[10px] font-black ${
-                      recebido ? "bg-green-50 text-green-700" : atencao ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-500"
-                    }`}>{categoria.sigla}</div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-bold text-gray-900">{categoria.titulo}</h3>
-                      <button type="button" className="mt-1 text-xs font-semibold text-gray-500 hover:text-red-600">
-                        {recebido ? "Ver documento" : "Adicionar documento"}
-                      </button>
-                    </div>
-                    <span className={`rbk-status ${recebido ? "bg-green-50 text-green-700" : atencao ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-600"}`}>
-                      <span>●</span>{status}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <div className="space-y-4">
+
+
+
+
+  <DocumentUploadCard
+    autorizacaoId={id}
+    categoria="documento_cliente"
+    title="Doc. Cliente (RG/CNH)"
+    accent="red"
+status={statusCategoria("documento_cliente")}
+  />
+
+  <DocumentUploadCard
+    autorizacaoId={id}
+    categoria="receita_medica"
+    title="Receita Médica"
+    accent="orange"
+status={statusCategoria("receita_medica")}
+  />
+
+  <DocumentUploadCard
+    autorizacaoId={id}
+    categoria="cupom_fiscal"
+    title="Cupom Fiscal"
+    accent="green"
+status={statusCategoria("cupom_fiscal")}
+  />
+
+  <DocumentUploadCard
+    autorizacaoId={id}
+    categoria="cupom_vinculado"
+    title="Cupom Vinculado"
+    accent="blue"
+status={statusCategoria("cupom_vinculado")}
+  />
+
+  <DocumentUploadCard
+    autorizacaoId={id}
+    categoria="outros"
+    title="Outros Documentos"
+    accent="purple"
+status={statusCategoria("outros")}
+    optional
+  />
+
+</div>
         </section>
 
         <button type="button" onClick={() => router.push(`/autorizacoes/${id}/documentos/sucesso`)}
@@ -122,5 +147,5 @@ export default function DocumentosAutorizacao() {
         </button>
       </div>
     </main>
-  );
+);
 }

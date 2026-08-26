@@ -9,6 +9,7 @@ type Autorizacao = {
   id: string;
   numero_autorizacao: string;
   data_autorizacao: string | null;
+  created_at: string;
   farmacia: string;
   observacao: string | null;
 };
@@ -24,7 +25,7 @@ export default function Autorizacoes() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setErro("Sessão expirada. Faça login novamente."); setCarregando(false); return; }
       const { data, error } = await supabase.from("autorizacoes")
-        .select("id, numero_autorizacao, data_autorizacao, farmacia, observacao")
+        .select("id, numero_autorizacao, data_autorizacao, farmacia, observacao, created_at")
         .eq("user_id", user.id).order("created_at", { ascending: false });
       if (error) { setErro(error.message); setCarregando(false); return; }
       setAutorizacoes(data || []);
@@ -88,7 +89,7 @@ export default function Autorizacoes() {
                   <span className="rbk-status bg-green-50 text-green-700">● Ativa</span>
                 </div>
                 <div className="mt-6 grid gap-4 border-t border-gray-100 pt-5 sm:grid-cols-2">
-                  <div><p className="text-xs font-semibold uppercase tracking-[0.1em] text-gray-400">Data</p><p className="mt-1 text-sm font-semibold text-gray-800">{formatarData(autorizacao.data_autorizacao)}</p></div>
+                  <div><p className="text-xs font-semibold uppercase tracking-[0.1em] text-gray-400">Cadastrada em</p><p className="mt-1 text-sm font-semibold text-gray-800">{formatarData(autorizacao.created_at.slice(0, 10))}</p></div>
                   <div><p className="text-xs font-semibold uppercase tracking-[0.1em] text-gray-400">Farmácia</p><p className="mt-1 text-sm font-semibold text-gray-800">{autorizacao.farmacia}</p></div>
                 </div>
                 <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-4">
