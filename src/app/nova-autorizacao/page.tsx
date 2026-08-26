@@ -47,6 +47,21 @@ function nomeSeguro(nome: string) {
     .replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
+function formatarNumeroAutorizacao(valor: string) {
+  const digits = valor.replace(/\D/g, "").slice(0, 15);
+
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  }
+  if (digits.length <= 12) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}.${digits.slice(9)}`;
+  }
+
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}.${digits.slice(9, 12)}.${digits.slice(12)}`;
+}
+
 export default function NovaAutorizacao() {
   const router = useRouter();
   const supabase = createClient();
@@ -153,8 +168,18 @@ export default function NovaAutorizacao() {
 
         if (!file) continue;
 
-        const nome = nomeSeguro(file.name);
-        const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nome}`;
+     const extensao = file.name.includes(".")
+  ? file.name.substring(file.name.lastIndexOf("."))
+  : "";
+
+const hoje = new Date();
+const dia = String(hoje.getDate()).padStart(2, "0");
+const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+const ano = hoje.getFullYear();
+
+const nomeArquivo = `${numero.trim()}_${categoria}_${dia}_${mes}_${ano}${extensao}`;
+
+const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeArquivo}`;
 
         const { error: erroUpload } = await supabase.storage
           .from("documentos")
@@ -174,7 +199,7 @@ export default function NovaAutorizacao() {
           .insert({
             autorizacao_id: autorizacao.id,
             categoria,
-            nome_arquivo: file.name,
+            nome_arquivo: nomeArquivo,
             caminho_arquivo: caminho,
             status: "recebido",
           });
@@ -263,8 +288,8 @@ export default function NovaAutorizacao() {
 
               <input
                 value={numero}
-                onChange={(e) => setNumero(e.target.value)}
-                placeholder="Ex.: AUT-987654"
+                onChange={(e) => setNumero(formatarNumeroAutorizacao(e.target.value))}
+                placeholder="Ex.: 000.000.000.000.000"
                 required
                 className="rbk-input"
               />
