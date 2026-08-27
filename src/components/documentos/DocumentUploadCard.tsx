@@ -210,52 +210,63 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+      {/* Cabeçalho */}
+      <div className="mb-5 flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold ${accentClasses[accent]}`}
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold ${accentClasses[accent]}`}
           >
             DOC
           </div>
 
-          <h3 className="text-base font-bold text-gray-700 sm:text-lg">
-            {title}
-          </h3>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-gray-800 sm:text-lg">
+              {title}
+            </h3>
+
+            <p className="mt-0.5 text-xs text-gray-400">
+              Documento vinculado à autorização
+            </p>
+          </div>
         </div>
 
         <span
-           className={`shrink-0 text-sm font-semibold ${
-  file || status === "recebido"
-    ? "text-green-600"
-    : status === "atencao"
-      ? "text-orange-600"
-      : optional
-        ? "text-gray-400"
-        : "text-red-600"
-}`}
+          className={
+            "shrink-0 rounded-full px-3 py-1 text-xs font-semibold " +
+            (file || status === "recebido"
+              ? "bg-green-50 text-green-700"
+              : status === "atencao"
+                ? "bg-orange-50 text-orange-700"
+                : optional
+                  ? "bg-gray-100 text-gray-500"
+                  : "bg-red-50 text-red-600")
+          }
         >
-          {file
-  ? enviando
-    ? "Enviando..."
-    : "✓ Anexado"
-  : status === "recebido"
-    ? "✓ Recebido"
-    : optional
-      ? "Opcional"
-      : "Pendente"}
+          {enviando
+            ? "Enviando..."
+            : file
+              ? "✓ Anexado"
+              : status === "recebido"
+                ? "✓ Recebido"
+                : optional
+                  ? "Opcional"
+                  : status === "atencao"
+                    ? "Atenção"
+                    : "Pendente"}
         </span>
       </div>
 
       {!file ? (
+        /* Estado sem arquivo */
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             type="button"
             onClick={() => cameraRef.current?.click()}
             disabled={enviando}
-            className="flex items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 text-base font-semibold text-gray-800 transition hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+            className="flex h-12 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <span className="text-xl">📷</span>
+            <span className="text-lg">📷</span>
             Câmera
           </button>
 
@@ -263,24 +274,39 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
             type="button"
             onClick={() => galleryRef.current?.click()}
             disabled={enviando}
-            className="flex items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 text-base font-semibold text-gray-800 transition hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+            className="flex h-12 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <span className="text-xl">🖼️</span>
+            <span className="text-lg">🖼️</span>
             Galeria
           </button>
         </div>
       ) : (
-        <div className="rounded-xl border border-green-200 bg-white p-3">
-          <div className="mb-3 overflow-hidden rounded-lg bg-gray-100">
+        /* Estado com arquivo */
+        <div className="space-y-4">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
             {preview ? (
-              <img
-                src={preview}
-                alt={`Pré-visualização de ${title}`}
-                className="max-h-80 w-full object-contain"
-              />
+              <div className="flex min-h-40 items-center justify-center p-3">
+                <img
+                  src={preview}
+                  alt={`Pré-visualização de ${title}`}
+                  className="max-h-56 w-full rounded-lg object-contain"
+                />
+              </div>
             ) : (
-              <div className="flex min-h-24 items-center justify-center px-4 text-sm text-gray-600">
-                Arquivo selecionado: {file.name}
+              <div className="flex min-h-40 items-center justify-center px-4 text-center">
+                <div>
+                  <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-200 text-sm font-bold text-gray-500">
+                    DOC
+                  </div>
+
+                  <p className="text-sm font-medium text-gray-700">
+                    {file.name}
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-400">
+                    Arquivo selecionado
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -290,7 +316,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
               type="button"
               onClick={() => cameraRef.current?.click()}
               disabled={enviando}
-              className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Tirar outra foto
             </button>
@@ -299,7 +325,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
               type="button"
               onClick={removerArquivo}
               disabled={enviando}
-              className="flex-1 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
+              className="flex-1 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Remover
             </button>
@@ -308,11 +334,12 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
       )}
 
       {erro && (
-        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {erro}
         </div>
       )}
 
+      {/* Inputs invisíveis */}
       <input
         ref={cameraRef}
         type="file"
