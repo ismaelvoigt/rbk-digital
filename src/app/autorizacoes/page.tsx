@@ -72,10 +72,6 @@ export default function Autorizacoes() {
     if (dia.length !== 2 || mes.length !== 2 || ano.length !== 4) return "";
     return `${ano}-${mes}-${dia}`;
   };
-
-  const dataInicialSupabase = converterDataParaSupabase(dataInicial);
-  const dataFinalSupabase = converterDataParaSupabase(dataFinal);
-
     if (numero) {
       const numeroFormatado = numero
         .padStart(15, "0")
@@ -87,16 +83,7 @@ export default function Autorizacoes() {
     if (cpf) {
       query = query.eq("cpf_cliente", cpf);
     }
-
-    if (dataInicial) {
-      query = query.gte("data_autorizacao", dataInicialSupabase);
-    }
-
-    if (dataFinal) {
-      query = query.lte("data_autorizacao", dataFinalSupabase);
-    }
-
-    const { data, error } = await query;
+const { data, error } = await query;
 
     if (error) {
       setErro(error.message);
@@ -104,6 +91,7 @@ export default function Autorizacoes() {
       setCarregando(false);
       return;
     }
+
 
     setAutorizacoes(data || []);
     setCarregando(false);
@@ -136,23 +124,49 @@ export default function Autorizacoes() {
       !cpf ||
       (autorizacao.cpf_cliente ?? "").replace(/\D/g, "").includes(cpf);
 
-    const dataAutorizacao = (
-      autorizacao.data_autorizacao ?? autorizacao.created_at
-    ).slice(0, 10);
+    const normalizarData = (valor: string | null) => {
+      if (!valor) return "";
 
-    const dataInicialFiltro = dataInicial
-    ? dataInicial.split("/").reverse().join("-")
-    : "";
+      const data = valor.trim();
 
-  const dataFinalFiltro = dataFinal
-    ? dataFinal.split("/").reverse().join("-")
-    : "";
+      if (!data) return "";
 
-  const correspondeDataInicial =
-    !dataInicial || dataAutorizacao >= dataInicialFiltro;
+      // Data digitada pelo usuário: DD/MM/YYYY
+      const partes = data.split("/");
 
-  const correspondeDataFinal =
-    !dataFinal || dataAutorizacao <= dataFinalFiltro;
+      if (
+        partes.length === 3 &&
+        partes[0].length === 2 &&
+        partes[1].length === 2 &&
+        partes[2].length === 4
+      ) {
+        return `${partes[2]}-${partes[1]}-${partes[0]}`;
+      }
+
+      // Data do banco: YYYY-MM-DD ou timestamp ISO
+      if (
+        data.length >= 10 &&
+        data[4] === "-" &&
+        data[7] === "-"
+      ) {
+        return data.slice(0, 10);
+      }
+
+      return "";
+    };
+
+    const dataAutorizacao =
+      normalizarData(autorizacao.data_autorizacao) ||
+      normalizarData(autorizacao.created_at);
+
+    const dataInicialFiltro = normalizarData(dataInicial);
+    const dataFinalFiltro = normalizarData(dataFinal);
+
+    const correspondeDataInicial =
+      !dataInicialFiltro || dataAutorizacao >= dataInicialFiltro;
+
+    const correspondeDataFinal =
+      !dataFinalFiltro || dataAutorizacao <= dataFinalFiltro;
 
     return correspondeNumero && correspondeCpf && correspondeDataInicial && correspondeDataFinal;
   });
