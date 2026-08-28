@@ -276,7 +276,20 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
             disabled={enviando}
             className="flex h-12 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <span className="text-lg">🖼️</span>
+            <svg
+  viewBox="0 0 24 24"
+  className="h-5 w-5"
+  fill="none"
+  stroke="currentColor"
+  strokeWidth="1.8"
+  strokeLinecap="round"
+  strokeLinejoin="round"
+  aria-hidden="true"
+>
+  <rect x="3" y="3" width="18" height="18" rx="3" />
+  <circle cx="8.5" cy="8.5" r="1.5" />
+  <path d="m21 15-5-5L5 21" />
+</svg>
             Galeria
           </button>
         </div>
