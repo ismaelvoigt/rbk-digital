@@ -121,6 +121,7 @@ export default function Autorizacoes() {
     setDataInicial("");
     setDataFinal("");
     setErro("");
+    setAutorizacoes([]);
   }
 
   const autorizacoesFiltradas = autorizacoes.filter((autorizacao) => {
