@@ -216,9 +216,6 @@ export default function DocumentosAutorizacao() {
 
       <div className="rbk-container max-w-4xl py-8 sm:py-10">
         <div className="mb-7">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-red-600">
-            Documentação
-          </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
             Documentos da autorização
           </h1>
@@ -264,19 +261,7 @@ export default function DocumentosAutorizacao() {
           }}
         />
 
-        <button
-          type="button"
-          onClick={async () => {
-            if (arquivoSubstituicao && documentoEmEdicao) {
-              await substituirDocumento(arquivoSubstituicao);
-              setArquivoSubstituicao(null);
-              setDocumentoEmEdicao(null);
-            }
-          }}
-          className="rbk-primary mt-6 w-full rounded-[13px] px-6 py-4 text-sm font-bold"
-        >
-          Salvar documentos
-        </button>
+
 
         <section className="mt-8">
           <div className="mb-4">
@@ -350,7 +335,7 @@ export default function DocumentosAutorizacao() {
               </p>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {documentos.map((documento) => {
                 const categoria = categorias.find(
                   (c) => c.id === documento.categoria,
@@ -397,7 +382,7 @@ export default function DocumentosAutorizacao() {
                           href={documento.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rbk-primary inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-bold"
+                          className="rbk-primary inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold"
                         >
                           Visualizar
                         </a>
@@ -409,7 +394,7 @@ export default function DocumentosAutorizacao() {
                           setDocumentoEmEdicao(documento);
                           substituirInputRef.current?.click();
                         }}
-                        className="rbk-primary inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-bold"
+                        className="rbk-primary inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold"
                       >
                         Substituir
                       </button>
@@ -420,13 +405,6 @@ export default function DocumentosAutorizacao() {
             </div>
           </section>
         )}
-        <button
-          type="button"
-          onClick={() => router.push(`/autorizacoes/${id}/documentos/sucesso`)}
-          className="rbk-primary mt-6 w-full rounded-[13px] px-6 py-4 text-sm font-bold"
-        >
-          Continuar
-        </button>
         <input
           ref={substituirInputRef}
           type="file"
@@ -442,6 +420,7 @@ export default function DocumentosAutorizacao() {
           }}
         />
 
+        <div className="mt-8 space-y-3">
         <button
           type="button"
           onClick={async () => {
@@ -451,10 +430,18 @@ export default function DocumentosAutorizacao() {
               setDocumentoEmEdicao(null);
             }
           }}
-          className="rbk-primary mt-6 w-full rounded-[13px] px-6 py-4 text-sm font-bold"
+          className="rbk-primary w-full rounded-[13px] px-6 py-4 text-sm font-bold"
         >
-          Salvar documentos
+          Salvar alterações
         </button>
+
+        <Link
+          href="/autorizacoes"
+          className="flex w-full items-center justify-center rounded-[13px] border border-gray-200 bg-white px-6 py-4 text-sm font-bold text-gray-600 hover:bg-gray-50"
+        >
+          ← Voltar para autorizações
+        </Link>
+      </div>
       </div>
     </main>
   );
