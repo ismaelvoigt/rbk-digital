@@ -115,6 +115,14 @@ export default function Autorizacoes() {
     return `${dia}/${mes}/${ano}`;
   }
 
+  function limparPesquisa() {
+    setBuscaNumero("");
+    setBuscaCpf("");
+    setDataInicial("");
+    setDataFinal("");
+    setErro("");
+  }
+
   const autorizacoesFiltradas = autorizacoes.filter((autorizacao) => {
     const numero = buscaNumero.replace(/\D/g, "");
     const cpf = buscaCpf.replace(/\D/g, "");
@@ -266,36 +274,29 @@ export default function Autorizacoes() {
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end">
-            <button
-              type="button"
-              onClick={pesquisarAutorizacoes}
-              disabled={carregando}
-              className="rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {carregando ? "Pesquisando..." : "Pesquisar"}
-            </button>
-          </div>
+          <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={limparPesquisa}
+            disabled={
+              carregando ||
+              (!buscaNumero && !buscaCpf && !dataInicial && !dataFinal)
+            }
+            className="rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-bold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Limpar pesquisa
+          </button>
 
-          {(buscaNumero || dataInicial || dataFinal) && (
-            <div className="mt-4 flex items-center justify-between gap-4 border-t border-gray-100 pt-4">
-              <p className="text-sm text-gray-500">
-                {autorizacoesFiltradas.length} autorização(ões) encontrada(s)
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setBuscaNumero("");
-                  setDataInicial("");
-                  setDataFinal("");
-                }}
-                className="text-sm font-bold text-red-600 hover:text-red-700"
-              >
-                Limpar filtros
-              </button>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={pesquisarAutorizacoes}
+            disabled={carregando}
+            className="rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {carregando ? "Pesquisando..." : "Pesquisar"}
+          </button>
         </div>
+          </div>
 
         {carregando && (
           <div className="rbk-card p-8 text-sm text-gray-500">
