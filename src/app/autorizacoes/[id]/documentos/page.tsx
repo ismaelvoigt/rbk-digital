@@ -429,10 +429,12 @@ export default function DocumentosAutorizacao() {
               setArquivoSubstituicao(null);
               setDocumentoEmEdicao(null);
             }
+
+            router.push(`/autorizacoes/${id}`);
           }}
           className="rbk-primary w-full rounded-[13px] px-6 py-4 text-sm font-bold"
         >
-          Salvar alterações
+          Confirmar
         </button>
 
         <Link
