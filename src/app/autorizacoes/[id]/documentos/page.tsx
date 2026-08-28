@@ -430,7 +430,7 @@ export default function DocumentosAutorizacao() {
               setDocumentoEmEdicao(null);
             }
 
-            router.push(`/autorizacoes/${id}`);
+            router.push("/autorizacoes");
           }}
           className="rbk-primary w-full rounded-[13px] px-6 py-4 text-sm font-bold"
         >
