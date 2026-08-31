@@ -6,6 +6,26 @@ import { useParams } from "next/navigation";
 import { createClient } from "../../../../../lib/supabase/client";
 import { RbkBrand } from "../../../../../components/RbkBrand";
 
+function formatarNumeroAutorizacao(valor: string) {
+  const digits = valor.replace(/\D/g, "").slice(0, 15);
+
+  if (digits.length <= 3) return digits;
+
+  if (digits.length <= 6) {
+    return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  }
+
+  if (digits.length <= 9) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  }
+
+  if (digits.length <= 12) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}.${digits.slice(9)}`;
+  }
+
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}.${digits.slice(9, 12)}.${digits.slice(12)}`;
+}
+
 export default function DocumentoSucesso() {
   const params = useParams();
   const id = params.id as string;
@@ -25,7 +45,7 @@ export default function DocumentoSucesso() {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <Link href="/dashboard"><RbkBrand compact /></Link>
+          <RbkBrand compact />
           <Link href={`/autorizacoes/${id}/documentos`} className="text-sm font-bold text-gray-500 hover:text-red-600">← Voltar</Link>
         </div>
       </header>
@@ -42,7 +62,7 @@ export default function DocumentoSucesso() {
 
         <div className="rbk-card mt-9 p-7 sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">Autorização</p>
-          <p className="mt-2 text-3xl font-bold text-gray-900">{numeroAutorizacao ? `#${numeroAutorizacao}` : ""}</p>
+          <p className="mt-2 text-3xl font-bold text-gray-900">{numeroAutorizacao ? `#${formatarNumeroAutorizacao(numeroAutorizacao)}` : ""}</p>
           <div className="mt-5 flex items-center gap-2 text-xs font-semibold text-green-700">
             <span className="h-2 w-2 rounded-full bg-green-500" /> Documento vinculado ao registro
           </div>

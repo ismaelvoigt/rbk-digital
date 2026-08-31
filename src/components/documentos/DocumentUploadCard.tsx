@@ -226,7 +226,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
             </h3>
 
             <p className="mt-0.5 text-xs text-gray-400">
-              Documento vinculado à autorização
+              Procurações, documentos do procurador ou outros relacionados à autorização.
             </p>
           </div>
         </div>
