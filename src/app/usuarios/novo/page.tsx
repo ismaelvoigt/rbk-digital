@@ -94,12 +94,7 @@ export default function NovaFarmaciaPage() {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
-          <Link
-            href="/dashboard"
-            aria-label="RBK Digital"
-          >
-            <RbkBrand compact />
-          </Link>
+          <RbkBrand compact />
 
           <Link
             href="/usuarios"

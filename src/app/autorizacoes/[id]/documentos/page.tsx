@@ -24,6 +24,26 @@ const categorias = [
   { id: "outros", titulo: "Outros documentos", sigla: "OUT" },
 ];
 
+function formatarNumeroAutorizacao(valor: string) {
+  const digits = valor.replace(/\D/g, "").slice(0, 15);
+
+  if (digits.length <= 3) return digits;
+
+  if (digits.length <= 6) {
+    return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  }
+
+  if (digits.length <= 9) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  }
+
+  if (digits.length <= 12) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}.${digits.slice(9)}`;
+  }
+
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}.${digits.slice(9, 12)}.${digits.slice(12)}`;
+}
+
 export default function DocumentosAutorizacao() {
   const supabase = createClient();
   const params = useParams();
@@ -202,14 +222,12 @@ export default function DocumentosAutorizacao() {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <Link href="/dashboard">
-            <RbkBrand compact />
-          </Link>
+          <RbkBrand compact />
           <Link
             href="/autorizacoes"
             className="text-sm font-bold text-gray-500 hover:text-red-600"
           >
-            ← Autorizações
+            Início
           </Link>
         </div>
       </header>
@@ -222,7 +240,7 @@ export default function DocumentosAutorizacao() {
           <p className="mt-2 text-sm text-gray-500">
             Autorização{" "}
             <span className="font-bold text-gray-800">
-              #{numeroAutorizacao}
+              #{formatarNumeroAutorizacao(numeroAutorizacao)}
             </span>
           </p>
         </div>

@@ -124,9 +124,7 @@ export default function Dashboard() {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between gap-5">
-          <Link href="/dashboard" aria-label="RBK Digital">
-            <RbkBrand compact />
-          </Link>
+          <RbkBrand compact />
 
           <div className="hidden text-right sm:block">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
