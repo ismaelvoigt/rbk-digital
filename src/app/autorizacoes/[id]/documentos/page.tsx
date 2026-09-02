@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/client";
 import { RbkBrand } from "../../../../components/RbkBrand";
 import DocumentUploadCard from "../../../../components/documentos/DocumentUploadCard";
+import { resultadoConfirmacao } from "../../../../lib/documentos/fluxoConfirmacao";
 
 type Documento = {
   id: string;
@@ -59,6 +60,7 @@ export default function DocumentosAutorizacao() {
   const [documentoEmEdicao, setDocumentoEmEdicao] = useState<Documento | null>(
     null,
   );
+  const [mensagemConfirmacao, setMensagemConfirmacao] = useState("");
 
   useEffect(() => {
     async function carregarDados() {
@@ -142,8 +144,8 @@ export default function DocumentosAutorizacao() {
       </main>
     );
 
-  async function substituirDocumento(arquivo: File) {
-    if (!documentoEmEdicao || !arquivoSubstituicao) return;
+  async function substituirDocumento(arquivo: File): Promise<boolean> {
+    if (!documentoEmEdicao || !arquivoSubstituicao) return false;
 
     try {
       const {
@@ -207,6 +209,7 @@ export default function DocumentosAutorizacao() {
 
       setArquivoSubstituicao(null);
       setDocumentoEmEdicao(null);
+      return true;
     } catch (error) {
       console.error("Erro ao substituir documento:", error);
 
@@ -215,6 +218,7 @@ export default function DocumentosAutorizacao() {
           ? error.message
           : "Não foi possível substituir o documento.",
       );
+      return false;
     }
   }
 
@@ -224,7 +228,7 @@ export default function DocumentosAutorizacao() {
         <div className="rbk-container flex min-h-[76px] items-center justify-between">
           <RbkBrand compact />
           <Link
-            href="/autorizacoes"
+            href="/farmacia"
             className="text-sm font-bold text-gray-500 hover:text-red-600"
           >
             Início
@@ -278,68 +282,6 @@ export default function DocumentosAutorizacao() {
             e.currentTarget.value = "";
           }}
         />
-
-
-
-        <section className="mt-8">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-gray-900">
-              Checklist documental
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Acompanhe cada categoria de documento vinculada à autorização.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <DocumentUploadCard
-              autorizacaoId={id}
-              numeroAutorizacao={numeroAutorizacao}
-              categoria="documento_cliente"
-              title="Doc. Cliente (RG/CNH)"
-              accent="red"
-              status={statusCategoria("documento_cliente")}
-            />
-
-            <DocumentUploadCard
-              autorizacaoId={id}
-              numeroAutorizacao={numeroAutorizacao}
-              categoria="receita_medica"
-              title="Receita Médica"
-              accent="orange"
-              status={statusCategoria("receita_medica")}
-            />
-
-            <DocumentUploadCard
-              autorizacaoId={id}
-              numeroAutorizacao={numeroAutorizacao}
-              categoria="cupom_fiscal"
-              title="Cupom Fiscal"
-              accent="green"
-              status={statusCategoria("cupom_fiscal")}
-            />
-
-            <DocumentUploadCard
-              autorizacaoId={id}
-              numeroAutorizacao={numeroAutorizacao}
-              categoria="cupom_vinculado"
-              title="Cupom Vinculado"
-              accent="blue"
-              status={statusCategoria("cupom_vinculado")}
-            />
-
-            <DocumentUploadCard
-              autorizacaoId={id}
-              numeroAutorizacao={numeroAutorizacao}
-              categoria="outros"
-              title="Outros Documentos"
-              accent="purple"
-              status={statusCategoria("outros")}
-              optional
-            />
-          </div>
-        </section>
-
         {documentos.length > 0 && (
           <section className="mt-8">
             <div className="mb-4">
@@ -439,16 +381,33 @@ export default function DocumentosAutorizacao() {
         />
 
         <div className="mt-8 space-y-3">
+        {mensagemConfirmacao && (
+          <div className="rounded-[13px] border border-green-100 bg-green-50 px-4 py-3 text-center text-sm font-semibold text-green-700">
+            ✓ {mensagemConfirmacao}
+          </div>
+        )}
         <button
           type="button"
           onClick={async () => {
-            if (arquivoSubstituicao && documentoEmEdicao) {
-              await substituirDocumento(arquivoSubstituicao);
-              setArquivoSubstituicao(null);
-              setDocumentoEmEdicao(null);
+            const temSubstituicao = Boolean(
+              arquivoSubstituicao && documentoEmEdicao,
+            );
+
+            if (temSubstituicao && arquivoSubstituicao) {
+              const atualizada = await substituirDocumento(arquivoSubstituicao);
+              if (!atualizada) return;
+
+              const resultado = resultadoConfirmacao(true);
+              if (resultado.tipo === "atualizada") {
+                setMensagemConfirmacao("Autorização atualizada");
+              }
+              return;
             }
 
-            router.push("/autorizacoes");
+            const resultado = resultadoConfirmacao(false);
+            if (resultado.tipo === "navegar") {
+              router.push(resultado.destino);
+            }
           }}
           className="rbk-primary w-full rounded-[13px] px-6 py-4 text-sm font-bold"
         >

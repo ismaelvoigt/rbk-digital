@@ -70,7 +70,7 @@ export default function DocumentoSucesso() {
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <Link href="/nova-autorizacao" className="rbk-primary rounded-[13px] px-6 py-4 text-center text-sm font-bold">Cadastrar nova autorização</Link>
-          <Link href="/dashboard" className="rbk-secondary rounded-[13px] px-6 py-4 text-center text-sm font-bold">Voltar para o início</Link>
+          <Link href="/farmacia" className="rbk-secondary rounded-[13px] px-6 py-4 text-center text-sm font-bold">Voltar para o início</Link>
         </div>
       </div>
     </main>
