@@ -1,22 +1,28 @@
 import Image from "next/image";
 
-export function RbkBrand({ compact = false }: { compact?: boolean }) {
+export function RbkBrand({
+  compact = false,
+  light = false,
+}: {
+  compact?: boolean;
+  light?: boolean;
+}) {
   return (
     <div
       className={
         compact
-          ? "relative h-14 w-[210px] overflow-hidden"
-          : "relative h-[75px] w-[280px] overflow-hidden"
+          ? "relative h-14 w-[220px] overflow-hidden"
+          : "relative h-[86px] w-[320px] overflow-hidden"
       }
       aria-label="RBK Digital"
     >
       <Image
-        src="/rbk-digital-logo.png"
+        src="/rbk-digital-logo-original.png"
         alt="RBK Digital"
         fill
         priority
-        sizes={compact ? "210px" : "280px"}
-        className="object-cover object-center"
+        sizes={compact ? "220px" : "320px"}
+        className="object-contain object-center"
       />
     </div>
   );

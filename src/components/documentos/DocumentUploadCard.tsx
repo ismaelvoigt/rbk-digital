@@ -37,6 +37,14 @@ const accentClasses = {
   purple: "text-purple-600 bg-purple-50",
 };
 
+const descricoesCategoria: Record<Categoria, string> = {
+  documento_cliente: "RG, CNH ou documento de identificação do cliente.",
+  receita_medica: "Receita médica vinculada à dispensação.",
+  cupom_fiscal: "Cupom fiscal referente à dispensação realizada.",
+  cupom_vinculado: "Cupom vinculado à autorização e à dispensação.",
+  outros: "Procurações, documentos do procurador ou outros relacionados à autorização.",
+};
+
 function nomeSeguro(nome: string) {
   return nome
     .normalize("NFD")
