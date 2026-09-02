@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -7,6 +9,7 @@ import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
 
 export default function FarmaciaPage() {
+  const router = useRouter();
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
@@ -30,6 +33,11 @@ export default function FarmaciaPage() {
     carregarUsuario();
   }, [supabase]);
 
+  async function sairDaConta() {
+    await supabase.auth.signOut();
+    router.push("/");
+  }
+
   if (carregando) {
     return (
       <main className="rbk-shell flex min-h-screen items-center justify-center">
@@ -46,14 +54,25 @@ export default function FarmaciaPage() {
         <div className="rbk-container flex min-h-[76px] items-center justify-between gap-5">
           <RbkBrand compact />
 
-          <div className="hidden text-right sm:block">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
-              Farmácia
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="hidden text-right sm:block">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+                Farmácia
+              </p>
 
-            <p className="mt-1 max-w-[280px] truncate text-sm font-medium text-gray-700">
-              {email}
-            </p>
+              <p className="mt-1 max-w-[280px] truncate text-sm font-medium text-gray-700">
+                {email}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={sairDaConta}
+              aria-label="Sair"
+              className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+            >
+              Sair
+            </button>
           </div>
         </div>
       </header>
