@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { filtroFarmacias, queryFarmacias } from "../../lib/usuarios/navegacao";
 import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
 
@@ -17,229 +17,490 @@ type Usuario = {
   last_access_at: string | null;
   farms?: {
     razao_social: string;
-  }[] | null;
+    nome_fantasia: string | null;
+    cnpj: string;
+    telefone: string | null;
+    cidade: string | null;
+    estado: string | null;
+    status: string;
+  } | null;
 };
+
+function formatarCnpj(valor: string) {
+  const numeros = valor.replace(/\D/g, "").slice(0, 14);
+
+  return numeros
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d)/, "$1-$2");
+}
+
+function formatarData(data: string | null) {
+  if (!data) return "Nunca acessou";
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(data));
+}
 
 export default function UsuariosPage() {
   const supabase = createClient();
 
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [carregando, setCarregando] = useState(true);
+  const [buscaCnpj, setBuscaCnpj] = useState("");
+  const [mostrarTodas, setMostrarTodas] = useState(false);
+  const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function carregarUsuarios() {
-      setCarregando(true);
-      setErro("");
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  const carregarUsuarios = useCallback(async () => {
+    setCarregando(true);
+    setErro("");
 
-      if (!user) {
-        window.location.href = "/";
-        return;
-      }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-      const { data, error } = await supabase
-        .from("users")
-        .select(`
-          id,
-          farm_id,
-          nome,
-          email,
-          perfil,
-          status,
-          created_at,
-          last_access_at,
-          farms (
-            razao_social
-          )
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Erro ao carregar usuários:", error);
-        setErro("Não foi possível carregar os usuários.");
-        setUsuarios([]);
-        setCarregando(false);
-        return;
-      }
-
-      setUsuarios((data ?? []) as Usuario[]);
-      setCarregando(false);
+    if (!user) {
+      window.location.href = "/";
+      return;
     }
 
-    carregarUsuarios();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      window.location.href = "/";
+      return;
+    }
+
+    const response = await fetch("/api/usuarios", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    const resultado = await response.json();
+
+    if (!response.ok) {
+      console.error(
+        "Erro ao carregar farmácias:",
+        resultado?.error
+      );
+      setErro(
+        resultado?.error ??
+          "Não foi possível carregar as farmácias."
+      );
+      setUsuarios([]);
+      setCarregando(false);
+      return;
+    }
+
+    setUsuarios(
+      (resultado?.usuarios ?? []) as Usuario[]
+    );
+    setCarregando(false);
   }, [supabase]);
 
-  function formatarData(data: string | null) {
-    if (!data) return "Nunca acessou";
+  useEffect(() => {
+    let active = true;
+    async function restaurar() {
+      await Promise.resolve();
+      if (!active) return;
+      const filtro = filtroFarmacias(window.location.search);
+      setBuscaCnpj(filtro.cnpj);
+      setMostrarTodas(filtro.todas);
+      if (filtro.cnpj || filtro.todas) {
+        try {
+          await carregarUsuarios();
+        } catch {
+          if (active) {
+            setErro("Não foi possível carregar as farmácias.");
+            setCarregando(false);
+          }
+        }
+      } else {
+        setUsuarios([]);
+      }
+    }
+    void restaurar();
+    window.addEventListener("popstate", restaurar);
+    return () => {
+      active = false;
+      window.removeEventListener("popstate", restaurar);
+    };
+  }, [carregarUsuarios]);
 
-    return new Intl.DateTimeFormat("pt-BR", {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(new Date(data));
+  function registrarFiltro(cnpj: string, todas: boolean) {
+    window.history.replaceState(null, "", `/usuarios${queryFarmacias(cnpj, todas)}`);
   }
 
-  function formatarStatus(status: string) {
-    return status === "active" ? "Ativo" : "Inativo";
+  const consulta = queryFarmacias(buscaCnpj, mostrarTodas);
+
+  const usuariosFiltrados = useMemo(() => {
+    const somenteNumeros = buscaCnpj.replace(/\D/g, "");
+
+    if (!somenteNumeros) {
+      return mostrarTodas ? usuarios : [];
+    }
+
+    return usuarios.filter((usuario) => {
+      const farm = usuario.farms;
+
+      return (
+        farm?.cnpj?.replace(/\D/g, "").includes(somenteNumeros) ??
+        false
+      );
+    });
+  }, [buscaCnpj, mostrarTodas, usuarios]);
+
+  async function pesquisar() {
+    registrarFiltro(buscaCnpj, false);
+    if (!buscaCnpj.replace(/\D/g, "")) {
+      setMostrarTodas(false);
+      setUsuarios([]);
+      return;
+    }
+
+    await carregarUsuarios();
+    setMostrarTodas(false);
+  }
+
+  async function verTodas() {
+    registrarFiltro("", true);
+    setBuscaCnpj("");
+    await carregarUsuarios();
+    setMostrarTodas(true);
+  }
+
+  async function excluirFarmacia(
+    usuarioId: string,
+    nomeFarmacia: string
+  ) {
+    const confirmado = window.confirm(
+      `Excluir a farmácia "${nomeFarmacia}"?\n\n` +
+        "O acesso será bloqueado, mas o histórico de autorizações e documentos será preservado."
+    );
+
+    if (!confirmado) return;
+
+    setErro("");
+    setExcluindoId(usuarioId);
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error(
+          "Sessão expirada. Faça login novamente."
+        );
+      }
+
+      const response = await fetch("/api/usuarios", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          id: usuarioId,
+          status: "inactive",
+        }),
+      });
+
+      const resultado = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          resultado?.error ?? "Não foi possível excluir a farmácia."
+        );
+      }
+
+      setUsuarios((atuais) =>
+        atuais.map((usuario) =>
+          usuario.id === usuarioId
+            ? {
+                ...usuario,
+                status: "inactive",
+                farms: usuario.farms
+                  ? {
+                      ...usuario.farms,
+                      status: "inactive",
+                    }
+                  : usuario.farms,
+              }
+            : usuario
+        )
+      );
+    } catch (error) {
+      console.error("Erro ao excluir farmácia:", error);
+
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir a farmácia."
+      );
+    } finally {
+      setExcluindoId(null);
+    }
   }
 
   return (
-    <main className="rbk-shell min-h-screen">
-      <header className="rbk-header">
-        <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
-          <RbkBrand compact />
+    <main className="min-h-screen bg-gray-50">
+      <header className="border-b border-gray-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-5">
+          <RbkBrand />
 
+          <nav aria-label="Navegação de farmácias" className="flex flex-wrap items-center justify-end gap-3">
+            <Link href="/dashboard" className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+              ← Voltar ao Dashboard
+            </Link>
           <Link
-            href="/dashboard"
-            className="text-sm font-semibold text-gray-500 transition hover:text-red-600"
+            href="/usuarios/novo"
+            className="rounded-xl rbk-primary px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
           >
-            ← Voltar ao dashboard
+            + Nova farmácia
           </Link>
+          </nav>
         </div>
       </header>
 
-      <div className="rbk-container py-8 sm:py-10">
-        <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-red-600">
-              Administração
-            </p>
+      <div className="mx-auto max-w-7xl px-6 py-10">
+        <div className="mb-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--rbk-red)]">
+            Perfil do gestor
+          </p>
 
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-              Usuários
-            </h1>
+          <h1 className="mt-2 text-3xl font-bold text-gray-900">
+            Farmácias cadastradas
+          </h1>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-              Gerencie os usuários com acesso ao RBK Digital.
-            </p>
-          </div>
-
-          <Link
-            href="/usuarios/novo"
-            className="rbk-primary inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-bold"
-          >
-            + Novo usuário
-          </Link>
+          <p className="mt-2 max-w-2xl text-gray-500">
+            Consulte uma farmácia pelo CNPJ ou visualize todas as
+            farmácias cadastradas no RBK Digital.
+          </p>
         </div>
 
+        <section className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+            <div className="flex-1">
+              <label
+                htmlFor="busca-cnpj"
+                className="mb-2 block text-sm font-semibold text-gray-700"
+              >
+                Buscar por CNPJ
+              </label>
+
+              <input
+                id="busca-cnpj"
+                value={formatarCnpj(buscaCnpj)}
+                onChange={(event) =>
+                  setBuscaCnpj(event.target.value)
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    pesquisar();
+                  }
+                }}
+                inputMode="numeric"
+                placeholder="00.000.000/0000-00"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-[var(--rbk-red)] focus:ring-2 focus:ring-red-600/20"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={pesquisar}
+              className="rounded-xl rbk-primary px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+            >
+              Buscar CNPJ
+            </button>
+
+            <button
+              type="button"
+              onClick={verTodas}
+              className="rounded-xl border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+            >
+              Ver todas as farmácias
+            </button>
+          </div>
+        </section>
+
         {erro && (
-          <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
             {erro}
           </div>
         )}
 
-        <section className="rbk-card overflow-hidden">
-          <div className="border-b border-gray-100 px-5 py-5 sm:px-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">
-                  Usuários cadastrados
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  {carregando
-                    ? "Carregando..."
-                    : `${usuarios.length} usuário${usuarios.length === 1 ? "" : "s"} cadastrado${usuarios.length === 1 ? "" : "s"}`}
-                </p>
-              </div>
-            </div>
+        {carregando ? (
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-sm text-gray-500">
+            Carregando farmácias...
           </div>
+        ) : !mostrarTodas && !buscaCnpj ? (
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+            Informe um CNPJ ou clique em “Ver todas as farmácias”.
+          </div>
+        ) : usuariosFiltrados.length === 0 ? (
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">
+            <p className="font-medium text-gray-700">
+              Nenhuma farmácia encontrada.
+            </p>
 
-          {carregando ? (
-            <div className="px-6 py-12 text-center text-sm text-gray-500">
-              Carregando usuários...
-            </div>
-          ) : usuarios.length === 0 ? (
-            <div className="px-6 py-14 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-2xl">
-                👤
-              </div>
+            <button
+              type="button"
+              onClick={verTodas}
+              className="mt-3 text-sm font-semibold text-[var(--rbk-red)] hover:underline"
+            >
+              Ver todas as farmácias
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {usuariosFiltrados.map((usuario) => {
+              const farm = usuario.farms;
 
-              <h3 className="mt-4 text-base font-bold text-gray-900">
-                Nenhum usuário encontrado
-              </h3>
+              if (!farm) return null;
 
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
-                Ainda não existem usuários disponíveis para gerenciamento.
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {usuarios.map((usuario) => (
-                <div
+              const ativo =
+                usuario.status === "active" &&
+                farm.status !== "inactive";
+
+              return (
+                <article
                   key={usuario.id}
-                  className="px-5 py-5 transition hover:bg-gray-50 sm:px-6"
+                  className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
                 >
-                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="min-w-0">
+                  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="truncate text-base font-bold text-gray-900">
-                          {usuario.nome}
-                        </h3>
+                        <h2 className="text-xl font-bold text-gray-900">
+                          {farm.nome_fantasia ||
+                            farm.razao_social}
+                        </h2>
 
                         <span
-                          className={
-                            usuario.status === "active"
-                              ? "rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700"
-                              : "rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500"
-                          }
+                          className={`rounded-full px-3 py-1 text-xs font-bold ${
+                            ativo
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
                         >
-                          {formatarStatus(usuario.status)}
+                          {ativo ? "Ativa" : "Inativa"}
                         </span>
                       </div>
 
-                      <p className="mt-1 truncate text-sm text-gray-600">
-                        {usuario.email}
-                      </p>
-
                       <p className="mt-1 text-sm text-gray-500">
-                        {usuario.farms?.[0]?.razao_social ?? "Razão Social não informada"}
+                        {farm.razao_social}
                       </p>
+
+                      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
+                            CNPJ
+                          </p>
+                          <p className="mt-1 font-medium text-gray-700">
+                            {formatarCnpj(farm.cnpj)}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
+                            E-mail
+                          </p>
+                          <p className="mt-1 break-all font-medium text-gray-700">
+                            {usuario.email}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
+                            Telefone
+                          </p>
+                          <p className="mt-1 font-medium text-gray-700">
+                            {farm.telefone || "Não informado"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
+                            Cidade / Estado
+                          </p>
+                          <p className="mt-1 font-medium text-gray-700">
+                            {farm.cidade || "Não informada"}
+                            {farm.estado
+                              ? ` / ${farm.estado}`
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid gap-4 border-t border-gray-100 pt-4 sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
+                            Criado em
+                          </p>
+                          <p className="mt-1 font-medium text-gray-700">
+                            {formatarData(usuario.created_at)}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
+                            Último acesso
+                          </p>
+                          <p className="mt-1 font-medium text-gray-700">
+                            {formatarData(usuario.last_access_at)}
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="grid gap-3 text-sm sm:grid-cols-3 lg:min-w-[520px]">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
-                          Perfil
-                        </p>
-                        <p className="mt-1 font-medium text-gray-700">
-                          Usuário
-                        </p>
-                      </div>
+                    <div className="flex shrink-0 flex-col gap-2 sm:flex-row xl:flex-col">
+                      <Link
+                        href={`/usuarios/${usuario.id}/editar${consulta}`}
+                        className="rounded-xl rbk-primary px-5 py-3 text-center text-sm font-semibold text-white transition hover:opacity-90"
+                      >
+                        Editar cadastro
+                      </Link>
 
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
-                          Criado em
-                        </p>
-                        <p className="mt-1 font-medium text-gray-700">
-                          {formatarData(usuario.created_at)}
-                        </p>
-                      </div>
+                      <Link
+                        href={`/usuarios/${usuario.id}/autorizacoes${consulta}`}
+                        className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-center text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                      >
+                        Ver autorizações
+                      </Link>
 
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
-                          Último acesso
-                        </p>
-                        <p className="mt-1 font-medium text-gray-700">
-                          {formatarData(usuario.last_access_at)}
-                        </p>
-                      </div>
+                      {ativo && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            excluirFarmacia(
+                              usuario.id,
+                              farm.nome_fantasia || farm.razao_social
+                            )
+                          }
+                          disabled={excluindoId === usuario.id}
+                          className="rounded-xl border border-red-200 bg-white px-5 py-3 text-center text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {excluindoId === usuario.id
+                            ? "Excluindo..."
+                            : "Excluir farmácia"}
+                        </button>
+                      )}
                     </div>
                   </div>
-
-                  <div className="mt-4 border-t border-gray-100 pt-4">
-                    <p className="break-all text-xs text-gray-400">
-                      ID: {usuario.id}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </div>
     </main>
   );

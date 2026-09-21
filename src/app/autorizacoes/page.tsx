@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
+import { getNavegacaoPerfil } from "../../lib/auth/navegacaoPerfil";
+import { resolveRole } from "../../lib/auth/rbac";
 
 type Autorizacao = {
   id: string;
@@ -59,6 +61,45 @@ export default function Autorizacoes() {
   const [pesquisou, setPesquisou] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function identificarPerfil() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user || !ativo) {
+        return;
+      }
+
+      const { data: administrador, error: adminError } = await supabase
+        .from("rbk_admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .eq("ativo", true)
+        .maybeSingle();
+
+      if (adminError) {
+        console.error("Erro ao verificar administrador:", adminError);
+        return;
+      }
+
+      if (ativo) {
+        setIsAdmin(Boolean(administrador));
+      }
+    }
+
+    identificarPerfil();
+
+    return () => {
+      ativo = false;
+    };
+  }, [supabase]);
+
+  const navegacao = getNavegacaoPerfil(isAdmin);
 
   async function pesquisar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -99,12 +140,44 @@ export default function Autorizacoes() {
         return;
       }
 
+      const { data: perfilUsuario, error: perfilError } = await supabase
+        .from("users")
+        .select("farm_id, perfil, status")
+        .eq("id", user.id)
+        .single();
+      if (perfilError || !perfilUsuario || perfilUsuario.status !== "active") {
+        setErro("Não foi possível validar sua farmácia.");
+        setAutorizacoes([]);
+        return;
+      }
+
+      const { data: rbkAdmin } = await supabase
+        .from("rbk_admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .eq("ativo", true)
+        .maybeSingle();
+      const role = resolveRole(perfilUsuario.perfil, Boolean(rbkAdmin));
+      if (!role) {
+        setErro("Perfil sem acesso às autorizações.");
+        setAutorizacoes([]);
+        return;
+      }
+
       let consulta = supabase
         .from("autorizacoes")
         .select(
           "id, numero_autorizacao, data_autorizacao, farmacia, observacao"
-        )
-        .eq("user_id", user.id);
+        );
+
+      if (role === "operador" || role === "administrador_farmacia") {
+        if (!perfilUsuario.farm_id) {
+          setErro("Farmácia não vinculada ao perfil.");
+          setAutorizacoes([]);
+          return;
+        }
+        consulta = consulta.eq("farm_id", perfilUsuario.farm_id);
+      }
 
       if (cpfNumeros) {
         consulta = consulta.eq("cpf_cliente", cpfNumeros);

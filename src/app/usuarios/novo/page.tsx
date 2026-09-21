@@ -22,6 +22,9 @@ export default function NovaFarmaciaPage() {
   const [nomeFantasia, setNomeFantasia] = useState("");
   const [cnpj, setCnpj] = useState("");
   const [email, setEmail] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [cidade, setCidade] = useState("");
+  const [estado, setEstado] = useState("");
 
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
@@ -57,6 +60,9 @@ export default function NovaFarmaciaPage() {
           nome_fantasia: nomeFantasia.trim(),
           cnpj: cnpj.replace(/\D/g, ""),
           email: email.trim(),
+          telefone: telefone.trim(),
+          cidade: cidade.trim(),
+          estado: estado.trim().toUpperCase(),
         }),
       });
 
@@ -76,6 +82,9 @@ export default function NovaFarmaciaPage() {
       setNomeFantasia("");
       setCnpj("");
       setEmail("");
+      setTelefone("");
+      setCidade("");
+      setEstado("");
     } catch (error) {
       console.error(
         "Erro ao cadastrar farmácia:",
@@ -97,10 +106,10 @@ export default function NovaFarmaciaPage() {
           <RbkBrand compact />
 
           <Link
-            href="/usuarios"
+            href="/dashboard"
             className="text-sm font-semibold text-gray-500 transition hover:text-red-600"
           >
-            ← Voltar para usuários
+            ← Voltar ao Dashboard
           </Link>
         </div>
       </header>
@@ -217,6 +226,58 @@ export default function NovaFarmaciaPage() {
                 }
                 placeholder="00.000.000/0000-00"
                 required
+                disabled={enviando}
+                className="rbk-input"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="telefone"
+                className="mb-2 block text-sm font-semibold text-gray-700"
+              >
+                Telefone
+              </label>
+              <input
+                id="telefone"
+                type="tel"
+                value={telefone}
+                onChange={(event) => setTelefone(event.target.value)}
+                disabled={enviando}
+                className="rbk-input"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="cidade"
+                className="mb-2 block text-sm font-semibold text-gray-700"
+              >
+                Cidade
+              </label>
+              <input
+                id="cidade"
+                type="text"
+                value={cidade}
+                onChange={(event) => setCidade(event.target.value)}
+                disabled={enviando}
+                className="rbk-input"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="estado"
+                className="mb-2 block text-sm font-semibold text-gray-700"
+              >
+                Estado
+              </label>
+              <input
+                id="estado"
+                type="text"
+                value={estado}
+                onChange={(event) => setEstado(event.target.value.toUpperCase())}
+                maxLength={2}
                 disabled={enviando}
                 className="rbk-input"
               />

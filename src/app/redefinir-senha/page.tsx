@@ -1,12 +1,18 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "../../lib/supabase/client";
-
-const supabase = createClient();
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { createBrowserClient } from "@supabase/ssr";
+import { validarLinkDeSenha } from "../../lib/auth/linkDeSenha";
 
 export default function RedefinirSenhaPage() {
+  const [supabase] = useState(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { isSingleton: false, auth: { detectSessionInUrl: false } }
+  ));
+  const validacao = useRef<Promise<boolean> | null>(null);
+  const [validando, setValidando] = useState(true);
   const [recuperacaoValida, setRecuperacaoValida] = useState(false);
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
@@ -15,27 +21,28 @@ export default function RedefinirSenhaPage() {
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setRecuperacaoValida(true);
-      }
+    let ativo = true;
+    // PASSWORD_RECOVERY e convites são validados antes de mostrar o formulário.
+    if (!validacao.current) {
+      validacao.current = validarLinkDeSenha(supabase.auth, window.location.href)
+        .catch(() => false);
+    }
+    validacao.current.then((valida) => {
+      if (!ativo) return;
+      setRecuperacaoValida(valida);
+      setValidando(false);
+      // Retira tokens e códigos do endereço após a tentativa de validação.
+      window.history.replaceState(null, "", window.location.pathname);
     });
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        setRecuperacaoValida(true);
-      }
-    });
-
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
+    return () => { ativo = false; };
+  }, [supabase]);
 
   async function atualizarSenha(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMensagem("");
     setErro("");
+
+    if (!recuperacaoValida || validando) return;
 
     if (novaSenha.length < 6) {
       setErro("A nova senha deve ter pelo menos 6 caracteres.");
@@ -85,17 +92,19 @@ export default function RedefinirSenhaPage() {
             className="mx-auto mb-6 h-16 w-auto object-contain"
           />
           <h1 className="text-2xl font-semibold text-slate-900">
-            Redefinir senha
+            Criar ou redefinir senha
           </h1>
           <p className="mt-2 text-sm text-slate-500">
             Crie uma nova senha para acessar o RBK Digital.
           </p>
         </div>
 
-        {!recuperacaoValida ? (
+        {validando ? (
+          <p className="text-sm text-slate-500">Validando seu link...</p>
+        ) : !recuperacaoValida ? (
           <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
-            O link de recuperação é inválido, expirou ou ainda não foi
-            validado. Solicite um novo link pela tela de login.
+            O link é inválido ou expirou. Solicite um novo convite ao administrador
+            ou use a recuperação de senha na tela de login.
           </div>
         ) : (
           <form onSubmit={atualizarSenha} className="space-y-4">
@@ -159,12 +168,12 @@ export default function RedefinirSenhaPage() {
           </form>
         )}
 
-        <a
+        <Link
           href="/"
           className="mt-6 block text-center text-sm font-medium text-slate-600 hover:text-slate-900"
         >
           Voltar para o login
-        </a>
+        </Link>
       </section>
     </main>
   );

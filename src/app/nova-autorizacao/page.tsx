@@ -5,6 +5,7 @@ import Link from "next/link";
 import DocumentUploadCard from "../../components/documentos/DocumentUploadCard";
 import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
+import { mensagemErroAutorizacao } from "../../lib/documentos/mensagemErroAutorizacao";
 
 type Categoria =
   | "documento_cliente"
@@ -23,17 +24,6 @@ type ArquivoSelecionado = {
   file: File | null;
   categoria: Categoria;
 };
-
-export function mensagemErroAutorizacao(error: {
-  code?: string;
-  message?: string;
-}) {
-  if (error.code === "23505") {
-    return "Esta autorização já está cadastrada. Revise o número da autorização informado. Se você esperava cadastrar uma nova autorização, confira se o número foi digitado corretamente.";
-  }
-
-  return "Não foi possível salvar a autorização.";
-}
 
 function formatarCpf(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -182,6 +172,7 @@ export default function NovaAutorizacao() {
           codigoErro === "23505" ||
           /duplicate|unique|already exists/i.test(mensagemErro)
         ) {
+          // Mensagem ao usuário: Esta autorização já está cadastrada.
           setErro(mensagemErroAutorizacao({ code: "23505" }));
           return;
         }

@@ -87,7 +87,7 @@ describe("integração do ambiente da farmácia", () => {
       "utf-8"
     );
 
-    expect(conteudo).toContain('.eq("user_id", user.id)');
+    expect(conteudo).toContain('.eq("farm_id", perfilUsuario.farm_id)');
   });
 });
 

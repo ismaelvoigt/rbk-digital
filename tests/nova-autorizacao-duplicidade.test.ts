@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mensagemErroAutorizacao } from "../src/app/nova-autorizacao/page";
+import { mensagemErroAutorizacao } from "../src/lib/documentos/mensagemErroAutorizacao";
 
 describe("duplicidade de autorização", () => {
   it("deve transformar erro 23505 em mensagem amigável", () => {

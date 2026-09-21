@@ -92,7 +92,7 @@ export default function FarmaciaPage() {
           </p>
         </div>
 
-        <section className="grid gap-5 sm:grid-cols-2">
+        <section className="grid gap-5 sm:grid-cols-3">
           <Link
             href="/nova-autorizacao"
             className="rbk-card rbk-card-hover group p-6"
@@ -137,6 +137,12 @@ export default function FarmaciaPage() {
             <span className="mt-5 inline-block text-sm font-bold text-red-600 transition group-hover:text-red-700">
               Consultar autorizações →
             </span>
+          </Link>
+          <Link href="/pendencias" className="rbk-card rbk-card-hover group p-6">
+            <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-xl font-bold text-amber-700">!</div>
+            <h2 className="text-base font-bold text-gray-900">Pendências</h2>
+            <p className="mt-3 text-sm leading-6 text-gray-500">Confira os documentos que precisam de atenção.</p>
+            <span className="mt-5 inline-block text-sm font-bold text-red-600">Conferir pendências →</span>
           </Link>
         </section>
       </div>

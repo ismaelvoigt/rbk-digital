@@ -1,0 +1,272 @@
+[
+  {
+    "cell": "B19",
+    "label": "* CNPJ DA MATRIZ:",
+    "group": "Empresa",
+    "type": "text"
+  },
+  {
+    "cell": "B20",
+    "label": "* CNPJ DA FARMÁCIA:",
+    "group": "Empresa",
+    "type": "text"
+  },
+  {
+    "cell": "B21",
+    "label": "* RAZÃO SOCIAL:",
+    "group": "Empresa",
+    "type": "text"
+  },
+  {
+    "cell": "B22",
+    "label": "* NOME FANTASIA:",
+    "group": "Empresa",
+    "type": "text"
+  },
+  {
+    "cell": "B23",
+    "label": "* CNAE:",
+    "group": "Empresa",
+    "type": "text"
+  },
+  {
+    "cell": "B24",
+    "label": "* CEP:",
+    "group": "Endereço e contato",
+    "type": "text"
+  },
+  {
+    "cell": "B25",
+    "label": "* TIPO DE LOGRADOURO:",
+    "group": "Endereço e contato",
+    "type": "text"
+  },
+  {
+    "cell": "B26",
+    "label": "* LOGRADOURO/ENDEREÇO:",
+    "group": "Endereço e contato",
+    "type": "text"
+  },
+  {
+    "cell": "B27",
+    "label": "* NÚMERO DO IMÓVEL:",
+    "group": "Endereço e contato",
+    "type": "text"
+  },
+  {
+    "cell": "B28",
+    "label": "* COMPLEMENTO:",
+    "group": "Endereço e contato",
+    "type": "text"
+  },
+  {
+    "cell": "B29",
+    "label": "* BAIRRO:",
+    "group": "Endereço e contato",
+    "type": "text"
+  },
+  {
+    "cell": "B30",
+    "label": "* UF:",
+    "group": "Endereço e contato",
+    "type": "text"
+  },
+  {
+    "cell": "B31",
+    "label": "* MUNICÍPIO:",
+    "group": "Endereço e contato",
+    "type": "text"
+  },
+  {
+    "cell": "B32",
+    "label": "* CORREIO ELETRÔNICO (E-MAIL):",
+    "group": "Endereço e contato",
+    "type": "text"
+  },
+  {
+    "cell": "B33",
+    "label": "* 1º TELEFONE:",
+    "group": "Endereço e contato",
+    "type": "text"
+  },
+  {
+    "cell": "B34",
+    "label": "* 2º TELEFONE:",
+    "group": "Endereço e contato",
+    "type": "text"
+  },
+  {
+    "cell": "B35",
+    "label": "* VALIDADE DA CERTIDÃO NEGATIVA DE DÉBITOS (CND):",
+    "group": "Regularidade e licença",
+    "type": "date"
+  },
+  {
+    "cell": "B36",
+    "label": "* NÚMERO DO REGISTRO NA JUNTA COMERCIAL:",
+    "group": "Regularidade e licença",
+    "type": "text"
+  },
+  {
+    "cell": "B38",
+    "label": "* NÚMERO",
+    "group": "Regularidade e licença",
+    "type": "text"
+  },
+  {
+    "cell": "B39",
+    "label": "* DATA DE VENCIMENTO:",
+    "group": "Regularidade e licença",
+    "type": "date"
+  },
+  {
+    "cell": "B40",
+    "label": "* FARMACÊUTICO RESPONSÁVEL:",
+    "group": "Farmacêutico responsável",
+    "type": "text"
+  },
+  {
+    "cell": "B41",
+    "label": "* CPF:",
+    "group": "Farmacêutico responsável",
+    "type": "text"
+  },
+  {
+    "cell": "B42",
+    "label": "* INSCRIÇÃO NO CRF:",
+    "group": "Farmacêutico responsável",
+    "type": "text"
+  },
+  {
+    "cell": "B43",
+    "label": "* UF:",
+    "group": "Farmacêutico responsável",
+    "type": "text"
+  },
+  {
+    "cell": "B45",
+    "label": "* CÓDIGO DO BANCO:",
+    "group": "Dados bancários da matriz",
+    "type": "text"
+  },
+  {
+    "cell": "B46",
+    "label": "* ENDEREÇO DA AGÊNCIA COM CEP:",
+    "group": "Dados bancários da matriz",
+    "type": "text"
+  },
+  {
+    "cell": "B47",
+    "label": "* TELEFONE DA AGÊNCIA: (00) 0000-0000",
+    "group": "Dados bancários da matriz",
+    "type": "text"
+  },
+  {
+    "cell": "B48",
+    "label": "*AGÊNCIA COM DÍGITO:",
+    "group": "Dados bancários da matriz",
+    "type": "text"
+  },
+  {
+    "cell": "B49",
+    "label": "* CONTA COM DÍGITO:",
+    "group": "Dados bancários da matriz",
+    "type": "text"
+  },
+  {
+    "cell": "B52",
+    "label": "*NOME DO SÓCIO ADMINISTRADOR:",
+    "group": "Sócio 1",
+    "type": "text"
+  },
+  {
+    "cell": "B53",
+    "label": "*CPF:",
+    "group": "Sócio 1",
+    "type": "text"
+  },
+  {
+    "cell": "B54",
+    "label": "*ENDEREÇO ELETRÔNICO:",
+    "group": "Sócio 1",
+    "type": "text"
+  },
+  {
+    "cell": "B55",
+    "label": "*TELEFONE:",
+    "group": "Sócio 1",
+    "type": "text"
+  },
+  {
+    "cell": "B56",
+    "label": "*NOME DO SÓCIO ADMINISTRADOR:",
+    "group": "Sócio 2",
+    "type": "text"
+  },
+  {
+    "cell": "B57",
+    "label": "*CPF:",
+    "group": "Sócio 2",
+    "type": "text"
+  },
+  {
+    "cell": "B58",
+    "label": "*ENDEREÇO ELETRÔNICO:",
+    "group": "Sócio 2",
+    "type": "text"
+  },
+  {
+    "cell": "B59",
+    "label": "*TELEFONE:",
+    "group": "Sócio 2",
+    "type": "text"
+  },
+  {
+    "cell": "B60",
+    "label": "NOME DO SÓCIO ADMINISTRADOR:",
+    "group": "Sócio 3",
+    "type": "text"
+  },
+  {
+    "cell": "B61",
+    "label": "CPF:",
+    "group": "Sócio 3",
+    "type": "text"
+  },
+  {
+    "cell": "B62",
+    "label": "ENDEREÇO ELETRÔNICO:",
+    "group": "Sócio 3",
+    "type": "text"
+  },
+  {
+    "cell": "B63",
+    "label": "TELEFONE:",
+    "group": "Sócio 3",
+    "type": "text"
+  },
+  {
+    "cell": "B64",
+    "label": "NOME DO SÓCIO ADMINISTRADOR:",
+    "group": "Sócio 4",
+    "type": "text"
+  },
+  {
+    "cell": "B65",
+    "label": "CPF:",
+    "group": "Sócio 4",
+    "type": "text"
+  },
+  {
+    "cell": "B66",
+    "label": "ENDEREÇO ELETRÔNICO:",
+    "group": "Sócio 4",
+    "type": "text"
+  },
+  {
+    "cell": "B67",
+    "label": "TELEFONE:",
+    "group": "Sócio 4",
+    "type": "text"
+  }
+]

@@ -7,6 +7,7 @@ import { createClient } from "../../../../lib/supabase/client";
 import { RbkBrand } from "../../../../components/RbkBrand";
 import DocumentUploadCard from "../../../../components/documentos/DocumentUploadCard";
 import { resultadoConfirmacao } from "../../../../lib/documentos/fluxoConfirmacao";
+import { getNavegacaoPerfil } from "../../../../lib/auth/navegacaoPerfil";
 
 type Documento = {
   id: string;
@@ -47,6 +48,8 @@ function formatarNumeroAutorizacao(valor: string) {
 
 export default function DocumentosAutorizacao() {
   const supabase = createClient();
+
+  const [isAdmin, setIsAdmin] = useState(false);
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -63,6 +66,44 @@ export default function DocumentosAutorizacao() {
   const [mensagemConfirmacao, setMensagemConfirmacao] = useState("");
 
   useEffect(() => {
+    let ativo = true;
+
+    async function identificarPerfil() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user || !ativo) {
+        return;
+      }
+
+      const { data: administrador, error: adminError } = await supabase
+        .from("rbk_admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .eq("ativo", true)
+        .maybeSingle();
+
+      if (adminError) {
+        console.error("Erro ao verificar administrador:", adminError);
+        return;
+      }
+
+      if (ativo) {
+        setIsAdmin(Boolean(administrador));
+      }
+    }
+
+    identificarPerfil();
+
+    return () => {
+      ativo = false;
+    };
+  }, [supabase]);
+
+  const navegacao = getNavegacaoPerfil(isAdmin);
+
+  useEffect(() => {
     async function carregarDados() {
       const {
         data: { user },
@@ -76,7 +117,6 @@ export default function DocumentosAutorizacao() {
         .from("autorizacoes")
         .select("numero_autorizacao")
         .eq("id", id)
-        .eq("user_id", user.id)
         .single();
       if (!autorizacao) {
         setCarregando(false);
@@ -399,7 +439,7 @@ export default function DocumentosAutorizacao() {
 
               const resultado = resultadoConfirmacao(true);
               if (resultado.tipo === "atualizada") {
-                setMensagemConfirmacao("Autorização atualizada");
+                setMensagemConfirmacao("Documento substituído. A autorização será analisada novamente quando a auditoria automática estiver ativa.");
               }
               return;
             }
