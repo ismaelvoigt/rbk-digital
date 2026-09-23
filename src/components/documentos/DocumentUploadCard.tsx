@@ -24,6 +24,9 @@ numeroAutorizacao?: string;
 
   // Usado pela nova tela
   onFileChange?: (file: File | null) => void;
+  onFilesChange?: (files: File[]) => void;
+  onQrCodeClick?: () => void;
+  multiple?: boolean;
 };
 
 const accentClasses = {
@@ -50,6 +53,9 @@ status = "pendente",
 numeroAutorizacao,
   categoria,
   onFileChange,
+  onFilesChange,
+  onQrCodeClick,
+  multiple = false,
 }: DocumentUploadCardProps) {
   const supabase = createClient();
 
@@ -57,6 +63,7 @@ numeroAutorizacao,
   const galleryRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
@@ -189,13 +196,33 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
   function handleFileChange(
     event: React.ChangeEvent<HTMLInputElement>
   ) {
-    const selectedFile = event.target.files?.[0];
+    const selecionados = Array.from(event.target.files ?? []);
 
-    if (selectedFile) {
-      void selecionarArquivo(selectedFile);
+    if (multiple) {
+      if (selecionados.length > 0) {
+        setFiles((atuais) => {
+          const novos = [...atuais, ...selecionados];
+          onFilesChange?.(novos);
+          return novos;
+        });
+      }
+    } else {
+      const selectedFile = selecionados[0];
+
+      if (selectedFile) {
+        void selecionarArquivo(selectedFile);
+      }
     }
 
     event.target.value = "";
+  }
+
+  function removerArquivoMultiplo(index: number) {
+    setFiles((atuais) => {
+      const novos = atuais.filter((_, i) => i !== index);
+      onFilesChange?.(novos);
+      return novos;
+    });
   }
 
   function removerArquivo() {
@@ -225,16 +252,18 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
               {title}
             </h3>
 
-            <p className="mt-0.5 text-xs text-gray-400">
-              Documento vinculado à autorização
-            </p>
+            {multiple && (
+              <p className="mt-0.5 text-xs text-gray-400">
+                Procuração, RG/CNH do procurador, outros documentos.
+              </p>
+            )}
           </div>
         </div>
 
         <span
           className={
             "shrink-0 rounded-full px-3 py-1 text-xs font-semibold " +
-            (file || status === "recebido"
+            ((multiple ? files.length > 0 : Boolean(file)) || status === "recebido"
               ? "bg-green-50 text-green-700"
               : status === "atencao"
                 ? "bg-orange-50 text-orange-700"
@@ -245,8 +274,10 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
         >
           {enviando
             ? "Enviando..."
-            : file
-              ? "✓ Anexado"
+            : multiple && files.length > 0
+              ? `✓ ${files.length} ${files.length === 1 ? "arquivo" : "arquivos"}`
+              : file
+                ? "✓ Anexado"
               : status === "recebido"
                 ? "✓ Recebido"
                 : optional
@@ -257,9 +288,82 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
         </span>
       </div>
 
-      {!file ? (
+      {multiple ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => cameraRef.current?.click()}
+              disabled={enviando}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span className="text-lg">📷</span>
+              Câmera
+            </button>
+
+            <button
+              type="button"
+              onClick={() => galleryRef.current?.click()}
+              disabled={enviando}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="3" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="m21 15-5-5L5 21" />
+              </svg>
+              Galeria
+            </button>
+          </div>
+
+          {files.length > 0 && (
+            <div className="space-y-2">
+              {files.map((arquivo, index) => (
+                <div
+                  key={`${arquivo.name}-${arquivo.lastModified}-${index}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-700">
+                      {arquivo.name}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-400">
+                      Arquivo {index + 1}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => removerArquivoMultiplo(index)}
+                    className="shrink-0 text-xs font-bold text-red-600 hover:text-red-700"
+                  >
+                    Remover
+                  </button>
+                </div>
+              ))}
+
+              <p className="pt-1 text-xs font-medium text-gray-500">
+                {files.length} {files.length === 1
+                  ? "arquivo adicionado"
+                  : "arquivos adicionados"}
+              </p>
+            </div>
+          )}
+        </div>
+      ) : !file ? (
         /* Estado sem arquivo */
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className={`grid grid-cols-1 gap-3 ${
+          onQrCodeClick ? "sm:grid-cols-3" : "sm:grid-cols-2"
+        }`}>
           <button
             type="button"
             onClick={() => cameraRef.current?.click()}
@@ -292,6 +396,35 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
 </svg>
             Galeria
           </button>
+
+          {onQrCodeClick && (
+            <button
+              type="button"
+              onClick={onQrCodeClick}
+              disabled={enviando}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 3h6v6H3z" />
+                <path d="M15 3h6v6h-6z" />
+                <path d="M3 15h6v6H3z" />
+                <path d="M15 15h2v2h-2z" />
+                <path d="M19 15h2v2h-2z" />
+                <path d="M15 19h2v2h-2z" />
+                <path d="M19 19h2v2h-2z" />
+              </svg>
+              QR Code
+            </button>
+          )}
         </div>
       ) : (
         /* Estado com arquivo */
@@ -358,6 +491,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
         type="file"
         accept="image/*"
         capture="environment"
+        multiple={multiple}
         className="hidden"
         onChange={handleFileChange}
       />
@@ -366,6 +500,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
         ref={galleryRef}
         type="file"
         accept="image/*,.pdf"
+        multiple={multiple}
         className="hidden"
         onChange={handleFileChange}
       />

@@ -6,6 +6,7 @@ import Link from "next/link";
 import DocumentUploadCard from "../../components/documentos/DocumentUploadCard";
 import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
+import QrCodeScanner from "../../components/qrcode/QrCodeScanner";
 
 type Categoria =
   | "documento_cliente"
@@ -66,6 +67,7 @@ export default function NovaAutorizacao() {
   const router = useRouter();
   const supabase = createClient();
 
+  const [leitorQrAberto, setLeitorQrAberto] = useState(false);
   const [cpf, setCpf] = useState("");
   const [numero, setNumero] = useState("");
   const [arquivos, setArquivos] = useState<
@@ -78,6 +80,7 @@ export default function NovaAutorizacao() {
     outros: null,
   });
 
+  const [outrosArquivos, setOutrosArquivos] = useState<File[]>([]);
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
@@ -164,9 +167,14 @@ export default function NovaAutorizacao() {
       ];
 
       for (const categoria of categorias) {
-        const file = arquivos[categoria];
+        const arquivosDaCategoria =
+          categoria === "outros"
+            ? outrosArquivos
+            : arquivos[categoria]
+              ? [arquivos[categoria] as File]
+              : [];
 
-        if (!file) continue;
+        for (const file of arquivosDaCategoria) {
 
      const extensao = file.name.includes(".")
   ? file.name.substring(file.name.lastIndexOf("."))
@@ -212,6 +220,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
           throw new Error(
             `Erro ao registrar ${categoria}: ${erroDocumento.message}`
           );
+        }
         }
       }
 
@@ -321,6 +330,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
                   onFileChange={(file) =>
                     definirArquivo("receita_medica", file)
                   }
+                  onQrCodeClick={() => setLeitorQrAberto(true)}
                 />
 
                 <DocumentUploadCard
@@ -343,9 +353,8 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
                   title="Outros Documentos"
                   accent="purple"
                   optional
-                  onFileChange={(file) =>
-                    definirArquivo("outros", file)
-                  }
+                  multiple
+                  onFilesChange={setOutrosArquivos}
                 />
               </div>
             </div>
@@ -374,6 +383,10 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
           </form>
         </section>
       </div>
+
+      {leitorQrAberto && (
+        <QrCodeScanner onClose={() => setLeitorQrAberto(false)} />
+      )}
     </main>
   );
 }
