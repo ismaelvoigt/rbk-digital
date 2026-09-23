@@ -8,12 +8,55 @@ import { useEffect, useState } from "react";
 import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
 
+type AutorizacaoResumo = {
+  id: string;
+  numero_autorizacao: string;
+  cpf_cliente: string;
+  created_at: string;
+};
+
+type DocumentoResumo = {
+  autorizacao_id: string;
+  categoria: string;
+  created_at: string;
+};
+
+const categoriasObrigatorias = [
+  "documento_cliente",
+  "receita_medica",
+  "cupom_fiscal",
+  "cupom_vinculado",
+];
+
+function formatarNumeroAutorizacao(numero: string) {
+  const digits = numero.replace(/\D/g, "").slice(0, 18);
+
+  return digits.match(/.{1,3}/g)?.join(".") ?? digits;
+}
+
+function formatarCpf(cpf: string) {
+  const digits = cpf.replace(/\D/g, "").slice(0, 11);
+
+  if (digits.length !== 11) return cpf;
+
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(
+    6,
+    9
+  )}-${digits.slice(9)}`;
+}
+
 export default function FarmaciaPage() {
   const router = useRouter();
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [carregando, setCarregando] = useState(true);
+  const [autorizacoesHoje, setAutorizacoesHoje] = useState(0);
+  const [documentosHoje, setDocumentosHoje] = useState(0);
+  const [pendencias, setPendencias] = useState(0);
+  const [ultimaAutorizacao, setUltimaAutorizacao] =
+    useState<AutorizacaoResumo | null>(null);
+  const [ultimaCompleta, setUltimaCompleta] = useState(false);
 
   useEffect(() => {
     async function carregarUsuario() {
@@ -27,6 +70,81 @@ export default function FarmaciaPage() {
       }
 
       setEmail(user.email ?? "");
+
+      const inicioHoje = new Date();
+      inicioHoje.setHours(0, 0, 0, 0);
+
+      const { data: autorizacoesData } = await supabase
+        .from("autorizacoes")
+        .select("id, numero_autorizacao, cpf_cliente, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      const autorizacoes = (autorizacoesData ?? []) as AutorizacaoResumo[];
+
+      const ids = autorizacoes.map((item) => item.id);
+
+      let documentos: DocumentoResumo[] = [];
+
+      if (ids.length > 0) {
+        const { data: documentosData } = await supabase
+          .from("documentos")
+          .select("autorizacao_id, categoria, created_at")
+          .in("autorizacao_id", ids);
+
+        documentos = (documentosData ?? []) as DocumentoResumo[];
+      }
+
+      const hojeTimestamp = inicioHoje.getTime();
+
+      setAutorizacoesHoje(
+        autorizacoes.filter(
+          (item) => new Date(item.created_at).getTime() >= hojeTimestamp
+        ).length
+      );
+
+      setDocumentosHoje(
+        documentos.filter(
+          (item) => new Date(item.created_at).getTime() >= hojeTimestamp
+        ).length
+      );
+
+      const documentosPorAutorizacao = new Map<string, Set<string>>();
+
+      for (const documento of documentos) {
+        const atual =
+          documentosPorAutorizacao.get(documento.autorizacao_id) ??
+          new Set<string>();
+
+        atual.add(documento.categoria);
+        documentosPorAutorizacao.set(documento.autorizacao_id, atual);
+      }
+
+      const quantidadePendencias = autorizacoes.filter((autorizacao) => {
+        const categorias =
+          documentosPorAutorizacao.get(autorizacao.id) ?? new Set<string>();
+
+        return categoriasObrigatorias.some(
+          (categoria) => !categorias.has(categoria)
+        );
+      }).length;
+
+      setPendencias(quantidadePendencias);
+
+      const ultima = autorizacoes[0] ?? null;
+      setUltimaAutorizacao(ultima);
+
+      if (ultima) {
+        const categorias =
+          documentosPorAutorizacao.get(ultima.id) ?? new Set<string>();
+
+        setUltimaCompleta(
+          categoriasObrigatorias.every((categoria) =>
+            categorias.has(categoria)
+          )
+        );
+      }
+
       setCarregando(false);
     }
 
@@ -138,6 +256,80 @@ export default function FarmaciaPage() {
               Consultar autorizações →
             </span>
           </Link>
+        </section>
+
+        <section className="mt-8">
+          <div className="mb-4">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
+              Visão rápida
+            </p>
+          </div>
+
+          <div className="max-w-sm">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <p className="text-2xl font-bold tracking-tight text-gray-900">
+                {autorizacoesHoje}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">
+                Autorizações hoje
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
+                  Última autorização
+                </p>
+
+                {ultimaAutorizacao ? (
+                  <>
+                    <p className="mt-3 text-lg font-bold text-gray-900">
+                      {formatarNumeroAutorizacao(ultimaAutorizacao.numero_autorizacao)}
+                    </p>
+
+                    <p className="mt-1 text-sm font-medium text-gray-600">
+                      CPF {formatarCpf(ultimaAutorizacao.cpf_cliente)}
+                    </p>
+
+                    <p className="mt-1 text-sm text-gray-500">
+                      {new Intl.DateTimeFormat("pt-BR", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      }).format(new Date(ultimaAutorizacao.created_at))}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-3 text-sm text-gray-500">
+                    Nenhuma autorização cadastrada.
+                  </p>
+                )}
+              </div>
+
+              {ultimaAutorizacao && (
+                <span
+                  className={
+                    "shrink-0 rounded-full px-3 py-1 text-xs font-bold " +
+                    (ultimaCompleta
+                      ? "bg-green-50 text-green-700"
+                      : "bg-amber-50 text-amber-700")
+                  }
+                >
+                  {ultimaCompleta ? "✓ Completa" : "Atenção"}
+                </span>
+              )}
+            </div>
+
+            {ultimaAutorizacao && (
+              <Link
+                href={`/autorizacoes/${ultimaAutorizacao.id}/documentos`}
+                className="mt-5 inline-flex text-sm font-bold text-red-600 transition hover:text-red-700"
+              >
+                Ver autorização →
+              </Link>
+            )}
+          </div>
         </section>
       </div>
     </main>
