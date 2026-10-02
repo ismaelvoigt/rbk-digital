@@ -255,9 +255,9 @@ export default function UsuariosPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
+      <header className="rbk-topbar">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-5">
-          <RbkBrand />
+          <RbkBrand light />
 
           <nav aria-label="Navegação de farmácias" className="flex flex-wrap items-center justify-end gap-3">
             <Link href="/dashboard" className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">

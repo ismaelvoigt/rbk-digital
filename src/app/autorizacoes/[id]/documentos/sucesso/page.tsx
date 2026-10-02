@@ -47,7 +47,7 @@ export default function DocumentoSucesso() {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <RbkBrand compact />
+          <RbkBrand compact light />
           <Link href={`/autorizacoes/${id}/documentos`} className="text-sm font-bold text-gray-500 hover:text-red-600">← Voltar</Link>
         </div>
       </header>

@@ -65,7 +65,7 @@ export default function PendenciasPage() {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
-          <RbkBrand compact />
+          <RbkBrand compact light />
           <Link href="/farmacia" className="text-sm font-bold text-gray-600">← Voltar ao início</Link>
         </div>
       </header>

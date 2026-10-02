@@ -243,9 +243,9 @@ export default function EditarCadastroFarmaciaPage() {
   if (carregando) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <header className="border-b border-gray-200 bg-white">
+        <header className="rbk-topbar">
           <div className="mx-auto flex max-w-6xl items-center px-6 py-5">
-            <RbkBrand />
+            <RbkBrand light />
           </div>
         </header>
 
@@ -261,9 +261,9 @@ export default function EditarCadastroFarmaciaPage() {
   if (!cadastro) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <header className="border-b border-gray-200 bg-white">
+        <header className="rbk-topbar">
           <div className="mx-auto flex max-w-6xl items-center px-6 py-5">
-            <RbkBrand />
+            <RbkBrand light />
           </div>
         </header>
 
@@ -282,9 +282,9 @@ export default function EditarCadastroFarmaciaPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
+      <header className="rbk-topbar">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
-          <RbkBrand />
+          <RbkBrand light />
 
           <nav aria-label="Navegação de farmácias" className="flex flex-wrap items-center justify-end gap-3">
           <Link

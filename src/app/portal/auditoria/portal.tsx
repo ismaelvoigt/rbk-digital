@@ -170,10 +170,10 @@ export default function Portal() {
   const closed = summary?.audit.collection === "closed";
   return (
     <main className="aud-shell">
-      <header className="aud-top">
+      <header className="aud-top rbk-topbar">
         <div>
           <div className="aud-brand">
-            <RbkBrand compact />
+            <RbkBrand compact light />
           </div>
           <span className="aud-secure">Portal de documentos</span>
         </div>

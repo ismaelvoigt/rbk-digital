@@ -40,7 +40,7 @@ export default function Credenciamento({ id }: { id: string }) {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <RbkBrand compact />
+          <RbkBrand compact light />
           <Link
             href="/dashboard"
             className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"

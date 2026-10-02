@@ -175,7 +175,7 @@ export default function FarmaciaPage() {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between gap-5">
-          <RbkBrand compact />
+          <RbkBrand compact light />
 
           <div className="flex items-center gap-4">
             <div className="hidden text-right sm:block">

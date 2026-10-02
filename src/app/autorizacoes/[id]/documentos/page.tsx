@@ -234,7 +234,7 @@ export default function DocumentosAutorizacao() {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <RbkBrand compact />
+          <RbkBrand compact light />
           {navegacao && (<Link
             href={navegacao.href}
             className="text-sm font-bold text-gray-500 hover:text-red-600"

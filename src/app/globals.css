@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  --rbk-header-bg: #08172e;
   --rbk-red: #e30613;
   --rbk-red-dark: #b9040e;
   --rbk-orange: #ff7a00;
@@ -44,14 +45,23 @@ button, input, textarea { font: inherit; }
     var(--rbk-bg);
 }
 
+.rbk-header,
+.rbk-topbar {
+  border-bottom: 1px solid #20324b;
+  background: var(--rbk-header-bg);
+  color: #fff;
+}
+
 .rbk-header {
   position: sticky;
   top: 0;
   z-index: 20;
-  border-bottom: 1px solid rgba(229,231,235,.9);
-  background: rgba(255,255,255,.92);
-  backdrop-filter: blur(14px);
 }
+
+:is(.rbk-header, .rbk-topbar) :is(p, .aud-secure) { color: #e2e8f0; }
+:is(.rbk-header, .rbk-topbar) a:not(.bg-white):not(.rbk-primary):not(.rbk-secondary) { color: #f8fafc; }
+:is(.rbk-header, .rbk-topbar) a:not(.bg-white):not(.rbk-primary):not(.rbk-secondary):hover { color: #fff; text-decoration: underline; }
+:is(.rbk-header, .rbk-topbar) :is(a, button):focus-visible { outline: 3px solid #f4b400; outline-offset: 4px; }
 
 .rbk-container { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
 

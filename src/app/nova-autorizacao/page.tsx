@@ -289,7 +289,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
       <main className="rbk-shell min-h-screen">
         <header className="rbk-header">
           <div className="rbk-container flex min-h-[76px] items-center justify-between">
-            <RbkBrand compact />
+            <RbkBrand compact light />
 
             <Link
               href="/farmacia"
@@ -410,7 +410,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <RbkBrand compact />
+          <RbkBrand compact light />
           <Link
             href="/farmacia"
             className="text-sm font-bold text-gray-500 hover:text-red-600"

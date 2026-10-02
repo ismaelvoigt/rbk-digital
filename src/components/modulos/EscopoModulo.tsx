@@ -11,7 +11,7 @@ export default function EscopoModulo({titulo,children}:{titulo:string;children:(
  useEffect(()=>{let active=true;void contextoModulo(createClient()).then(c=>{if(active){setContexto(c);setSelecionada(c.farmacia);}}).catch(e=>{if(active)setErro(e.message);});return()=>{active=false;};},[]);
  useEffect(()=>{if(!contexto?.gestor)return;let active=true;const timer=setTimeout(()=>{setBuscando(true);setErro('');void pesquisarFarmacias(createClient(),busca).then(rows=>{if(active)setOpcoes(rows);}).catch(e=>{if(active){setOpcoes([]);setErro(e.message);}}).finally(()=>{if(active)setBuscando(false);});},250);return()=>{active=false;clearTimeout(timer);};},[busca,contexto]);
  const mobile=contexto&&!contexto.gestor&&desktop===false;
- return <main className="rbk-shell min-h-screen"><header className="rbk-header"><div className="rbk-container flex min-h-[76px] items-center justify-between gap-3 py-3"><RbkBrand compact/><Link href={contexto?.gestor?'/dashboard':'/farmacia'} className="text-sm font-bold text-gray-600 hover:text-red-700">← Voltar ao Dashboard</Link></div></header>
+ return <main className="rbk-shell min-h-screen"><header className="rbk-header"><div className="rbk-container flex min-h-[76px] items-center justify-between gap-3 py-3"><RbkBrand compact light /><Link href={contexto?.gestor?'/dashboard':'/farmacia'} className="text-sm font-bold text-gray-600 hover:text-red-700">← Voltar ao Dashboard</Link></div></header>
  <div className="rbk-container pt-6">
  {erro&&<p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-red-800">{erro}</p>}
  {!contexto&&!erro&&<p role="status">Verificando acesso…</p>}

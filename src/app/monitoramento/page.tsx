@@ -39,7 +39,7 @@ export default function MonitoramentoPage() {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
-          <RbkBrand compact />
+          <RbkBrand compact light />
           <Link href="/dashboard" className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">← Voltar ao Dashboard</Link>
         </div>
       </header>

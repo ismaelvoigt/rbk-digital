@@ -27,7 +27,7 @@ export default function EquipePage(){
  }
  async function reenviar(id:string){if(busy)return;setBusy(true);setErro('');setMensagem('');try{await api('POST',{id,reenviar:true});setMensagem('Convite reenviado.');await carregar();}catch(e){setErro(e instanceof Error?e.message:'Falha ao reenviar.');}finally{setBusy(false);}}
  const label=(p:string)=>p==='farmacia'?perfisEquipe.administrador_farmacia:perfisEquipe[p as keyof typeof perfisEquipe]||p;
- return <main className="rbk-shell min-h-screen"><header className="rbk-header"><div className="rbk-container flex min-h-[76px] items-center justify-between gap-5"><RbkBrand compact/><Link href="/farmacia" className="text-sm font-bold text-red-600">← Voltar ao Dashboard</Link></div></header>
+ return <main className="rbk-shell min-h-screen"><header className="rbk-header"><div className="rbk-container flex min-h-[76px] items-center justify-between gap-5"><RbkBrand compact light /><Link href="/farmacia" className="text-sm font-bold text-red-600">← Voltar ao Dashboard</Link></div></header>
  <div className="rbk-container py-8 sm:py-10"><p className="text-sm font-bold uppercase tracking-[.16em] text-red-600">Área da farmácia</p><h1 className="mt-2 text-3xl font-bold text-gray-900">Equipe</h1><p className="mt-2 text-sm text-gray-500">{farmacia||'Gerencie os acessos individuais da sua farmácia.'}</p>
  {erro&&<p role="alert" className="mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-700">{erro}</p>}{mensagem&&<p role="status" className="mt-5 rounded-xl bg-green-50 p-4 text-sm text-green-800">{mensagem}</p>}
  {loading?<p className="mt-8">Carregando equipe...</p>:actor&&<>

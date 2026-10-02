@@ -17,7 +17,7 @@ export function RbkBrand({
       aria-label="RBK Digital"
     >
       <Image
-        src="/rbk-digital-logo-original.png"
+        src={light ? "/rbk-digital-logo-blue.png" : "/rbk-digital-logo-original.png"}
         alt="RBK Digital"
         fill
         priority

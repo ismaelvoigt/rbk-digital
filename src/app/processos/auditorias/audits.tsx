@@ -185,11 +185,11 @@ export default function Audits() {
   }
   return (
     <main className="aud-shell">
-      <header className="aud-top">
+      <header className="aud-top rbk-topbar">
         <div className="flex min-h-[76px] items-center justify-between gap-4">
           <div>
             <div className="aud-brand">
-              <RbkBrand compact />
+              <RbkBrand compact light />
             </div>
             <span className="aud-secure">Gestor RBK · Processos</span>
           </div>
