@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
+import {getNavegacaoPorRole} from "../src/lib/auth/navegacaoPerfil";
 
 
 async function readNovaAutorizacao() {
@@ -33,13 +34,9 @@ describe("integração do ambiente da farmácia", () => {
   });
 
   it("consulta de autorizações deve retornar para o painel da farmácia", async () => {
-    const conteudo = await fs.readFile(
-      "src/app/autorizacoes/page.tsx",
-      "utf-8"
-    );
-
-    expect(conteudo).toContain('href="/farmacia"');
-    expect(conteudo).toContain("Início");
+    for (const perfil of ['farmacia','administrador_farmacia','gerente_farmacia','operador']) {
+      expect(getNavegacaoPorRole(perfil,false).href).toBe('/farmacia');
+    }
   });
 
   it("nova autorização deve armazenar o número somente com dígitos", async () => {
@@ -87,7 +84,7 @@ describe("integração do ambiente da farmácia", () => {
       "utf-8"
     );
 
-    expect(conteudo).toContain('.eq("user_id", user.id)');
+    expect(conteudo).toContain('.eq("farm_id", perfilUsuario.farm_id)');
   });
 });
 

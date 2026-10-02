@@ -1,7 +1,43 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+node_modules/
+.next/
+.env*
+!.env.*.example
+.vercel/
+*.tsbuildinfo
 
-# dependencies
-/node_modules
+
+# macOS
+.DS_Store
+
+# Backups locais RBK
+*.backup
+*.backup-*
+*.rbk-backup-*
+*.save
+rbk-backup-*/
+*-backup-*/
+
+# Scripts locais auxiliares
+implementar_fluxo_documentos*.py
+
+# Build e dependências
+.next/
+node_modules/
+
+# Outros padrões históricos de backup RBK
+*.bak
+*.bak-*
+*.backup_*
+*.login-backup
+*.rbk-*-backup-*
+*.rbk-*-fix-*
+*.rbk-*-object-*
+
+# Arquivos internos / privados
+private/
+supabase/.temp/
+
+# Proteções existentes na main
 /.pnp
 .pnp.*
 .yarn/*
@@ -9,35 +45,12 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-
-# testing
 /coverage
-
-# next.js
-/.next/
 /out/
-
-# production
 /build
-
-# misc
-.DS_Store
 *.pem
-
-# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
 next-env.d.ts
-
-*.bak

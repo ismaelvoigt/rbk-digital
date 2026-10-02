@@ -1,0 +1,39 @@
+'use client';
+import {useEffect,useRef,useState,type ReactNode} from 'react';
+import {dataBr,horarioBr,mensagemPadrao,origemLabel,statusLabels,whatsappUrl,type Edicao,type Evento,type Previsao} from '../../lib/proximas/domain';
+import {formatTelefone} from '../../lib/cadastro/telefone';
+export const botao='min-h-11 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40';
+export const principal='min-h-11 rounded-xl bg-red-700 px-4 py-2 text-sm font-bold text-white hover:bg-red-800 disabled:opacity-40';
+export function Modal({titulo,children,fechar,busy=false}:{titulo:string;children:ReactNode;fechar:()=>void;busy?:boolean}){
+ const ref=useRef<HTMLDivElement>(null);
+ useEffect(()=>{const anterior=document.activeElement as HTMLElement|null;ref.current?.focus();return()=>anterior?.focus();},[]);
+ return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3" onKeyDown={e=>{
+  if(e.key==='Escape'&&!busy)fechar();
+  if(e.key==='Tab'){const list=ref.current?.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input,textarea,select');if(!list?.length)return;const first=list[0],last=list[list.length-1];if(e.shiftKey&&(document.activeElement===first||document.activeElement===ref.current)){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}
+ }}><div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={titulo} className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl outline-none"><div className="mb-5 flex items-start justify-between gap-3"><h2 className="text-xl font-bold text-gray-900">{titulo}</h2><button className={botao} disabled={busy} onClick={fechar} aria-label="Fechar">×</button></div>{children}</div></div>;
+}
+export function EditarPrevisao({item,busy,erro,salvar,fechar}:{item:Previsao;busy:boolean;erro:string;salvar:(d:Edicao)=>void;fechar:()=>void}){
+ const [nome,setNome]=useState(item.nome||''),[telefone,setTelefone]=useState(item.telefone?formatTelefone(item.telefone):''),[data,setData]=useState(item.proxima_data||''),[dias,setDias]=useState(item.intervalo_dias?.toString()||''),[ref,setRef]=useState(item.referencia||'');
+ const [modo,setModo]=useState<'data'|'intervalo'|'nao_calculado'|'manter'>('manter');
+ return <Modal titulo="Editar previsão e contato" fechar={fechar} busy={busy}><p className="mb-4 text-sm text-gray-600">{item.produto} · CPF {item.cpf_mascarado}<br/>Última dispensação: {item.ultima_data?dataBr(item.ultima_data):'Data não confirmada na fonte'}</p>
+ <form onSubmit={e=>{e.preventDefault();salvar({acao:'previsao',nome,telefone,contato_versao:item.contato_versao,modo,...(modo==='data'?{data}:{}),...(modo==='intervalo'?{intervalo_dias:Number(dias)}:{}),referencia:ref});}}><fieldset disabled={busy} className="space-y-4">
+ <label className="block text-sm font-semibold">Nome do cliente<input className="rbk-input mt-1 w-full" value={nome} onChange={e=>setNome(e.target.value)} maxLength={150} placeholder="Informe o nome do beneficiário"/></label>
+ <label className="block text-sm font-semibold">Telefone / WhatsApp do cliente<input className="rbk-input mt-1 w-full" value={telefone} onChange={e=>setTelefone(formatTelefone(e.target.value))} inputMode="tel" maxLength={15} placeholder="(11) 99999-9999"/></label>
+ <label className="block text-sm font-semibold">Como definir a previsão<select className="rbk-input mt-1 w-full" value={modo} onChange={e=>setModo(e.target.value as typeof modo)}><option value="manter">Manter previsão e regra atuais</option><option value="nao_calculado">Manter como Não calculado</option><option value="data">Definir data manualmente</option><option value="intervalo">Calcular por intervalo confirmado</option></select></label>
+ {modo==='data'&&<label className="block text-sm font-semibold">Próxima retirada prevista<input required type="date" className="rbk-input mt-1 w-full" value={data} onChange={e=>setData(e.target.value)}/></label>}
+ {modo==='intervalo'&&<label className="block text-sm font-semibold">Intervalo confirmado (dias)<input required type="number" min={1} max={3650} step={1} className="rbk-input mt-1 w-full" value={dias} onChange={e=>setDias(e.target.value)}/><span className="mt-1 block text-xs font-normal text-gray-500">Use apenas o intervalo conferido na autorização/receita e nas regras aplicáveis ao produto.</span></label>}
+ <label className="block text-sm font-semibold">Referência ou justificativa<textarea required={modo!=='manter'} minLength={modo==='manter'?undefined:3} maxLength={1000} className="rbk-input mt-1 w-full" rows={3} value={ref} onChange={e=>setRef(e.target.value)} placeholder="Documento e regra consultados, ou motivo para manter sem cálculo"/></label>
+ <p className="text-xs leading-5 text-gray-500">A previsão não substitui a autorização do PFPB. Alterar a data devolve o status para A avisar e mantém os avisos anteriores no histórico. Dados de contato são compartilhados somente dentro desta farmácia.</p>
+ {erro&&<p role="alert" className="text-sm text-red-700">{erro}</p>}
+ <div className="flex justify-end gap-2"><button type="button" className={botao} onClick={fechar}>Cancelar</button><button className={principal}>{busy?'Salvando…':'Salvar previsão'}</button></div>
+ </fieldset></form></Modal>;
+}
+export function Avisar({item,farmacia,busy,erro,confirmar,fechar}:{item:Previsao;farmacia:string;busy:boolean;erro:string;confirmar:()=>void;fechar:()=>void}){
+ const [texto,setTexto]=useState(mensagemPadrao(item.nome||'',item.proxima_data||'',farmacia));
+ let url='';try{url=whatsappUrl(item.telefone||'',texto);}catch{/* A validação impede abrir link incompleto. */}
+ return <Modal titulo="Avisar pelo WhatsApp" fechar={fechar} busy={busy}><p className="text-sm text-gray-600">{item.nome} · {formatTelefone(item.telefone||'')}</p><label className="mt-4 block text-sm font-semibold">Mensagem para revisar<textarea rows={6} maxLength={2000} className="rbk-input mt-2 w-full" value={texto} onChange={e=>setTexto(e.target.value)} disabled={busy}/></label><p className="my-4 text-sm leading-6 text-gray-500">Abra o WhatsApp, confira e envie a mensagem. Depois, registre o aviso abaixo. Abrir o WhatsApp não altera o status.</p>{erro&&<p role="alert" className="mb-3 text-red-700">{erro}</p>}<div className="flex flex-wrap gap-3">{url&&!busy&&<a className={principal} href={url} target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a>}<button className={botao} disabled={busy} onClick={confirmar}>{busy?'Registrando…':'Marcar aviso como enviado'}</button></div><p className="mt-4 text-xs text-gray-500">Registro confirmado pelo funcionário; sem confirmação automática de entrega.</p></Modal>;
+}
+export function Historico({item,eventos,erro,fechar}:{item:Previsao;eventos:Evento[]|null;erro:string;fechar:()=>void}){
+ const labels:Record<string,string>={...statusLabels,criada:'Previsão criada',contato_editado:'Contato atualizado; regra preservada',previsao_editada:'Previsão e contato conferidos',fonte_invalidada:'Fonte invalidada',fonte_atualizada:'Fonte atualizada'};
+ return <Modal titulo="Histórico da previsão" fechar={fechar}><p className="text-sm text-gray-600">{item.produto} · {origemLabel[item.origem]}</p>{erro&&<p role="alert">{erro}</p>}{!eventos&&!erro?<p role="status" className="py-5">Carregando histórico…</p>:<ol className="mt-4 space-y-4">{eventos?.map((e,i)=><li key={i} className="border-l-2 border-red-200 pl-4"><p className="font-semibold">{labels[e.acao]||e.acao}</p><p className="text-sm text-gray-500">{horarioBr(e.criado_em)} · {e.usuario_nome||'Sistema'}{e.canal==='whatsapp_manual'?' · WhatsApp (registro manual)':''}</p>{typeof e.detalhes.referencia==='string'&&<p className="mt-1 text-sm">{e.detalhes.referencia}</p>}</li>)}</ol>}</Modal>;
+}

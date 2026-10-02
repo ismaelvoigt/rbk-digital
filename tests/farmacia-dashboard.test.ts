@@ -33,7 +33,7 @@ describe("painel da farmácia", () => {
     expect(conteudo).toContain("Autorizações cadastradas");
   });
 
-  it("não deve apresentar opções administrativas no painel da farmácia", async () => {
+  it("não deve apresentar gestão de cadastros e usuários no painel da farmácia", async () => {
     const fs = await import("node:fs/promises");
 
     const conteudo = await fs.readFile(
@@ -44,6 +44,5 @@ describe("painel da farmácia", () => {
     expect(conteudo).not.toContain('href="/usuarios"');
     expect(conteudo).not.toContain('href="/usuarios/novo"');
     expect(conteudo).not.toContain("Nova farmácia");
-    expect(conteudo).not.toContain("Administração");
   });
 });

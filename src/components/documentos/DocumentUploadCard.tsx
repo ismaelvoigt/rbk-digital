@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { dispararExtracao } from "../../lib/cupons/client";
 import { createClient } from "../../lib/supabase/client";
 
 type Categoria =
@@ -75,6 +76,7 @@ numeroAutorizacao,
   const [preview, setPreview] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+  const [leitura, setLeitura] = useState("");
 
 function gerarNomeArquivo(
   numero: string,
@@ -170,7 +172,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
         throw new Error(uploadError.message);
       }
 
-      const { error: documentoError } = await supabase
+      const { data: documentoNovo, error: documentoError } = await supabase
         .from("documentos")
         .insert({
           autorizacao_id: autorizacaoId,
@@ -178,7 +180,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
           nome_arquivo: nomeArquivo,
           caminho_arquivo: caminho,
           status: "recebido",
-        });
+        }).select("id").single();
 
       if (documentoError) {
         await supabase.storage
@@ -187,6 +189,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
 
         throw new Error(documentoError.message);
       }
+      if (documentoNovo) setLeitura(await dispararExtracao(supabase, documentoNovo.id, categoria));
     } catch (error) {
       setErro(
         error instanceof Error
@@ -360,9 +363,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
               ))}
 
               <p className="pt-1 text-xs font-medium text-gray-500">
-                {files.length} {files.length === 1
-                  ? "arquivo adicionado"
-                  : "arquivos adicionados"}
+                {files.length} {files.length === 1 ? "arquivo adicionado" : "arquivos adicionados"}
               </p>
             </div>
           )}
@@ -487,6 +488,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
         </div>
       )}
 
+      {leitura && <p role="status" className="mt-3 text-xs leading-5 text-gray-600">{leitura}</p>}
       {erro && (
         <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {erro}

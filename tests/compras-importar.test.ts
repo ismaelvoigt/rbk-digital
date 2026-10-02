@@ -1,0 +1,10 @@
+import {it,expect} from 'vitest';
+import {lerCSV,mapearEstoque} from '../src/lib/compras/importar';
+const m={ean:0,produto:1,quantidade:2,unidade:3};
+it('lê CSV brasileiro, campos com aspas e quebra, número localizado',()=>{const rows=lerCSV('EAN;Produto;Saldo;Unidade\r\n7891234567895;"Nome; com ""aspas""\ncontinua";"1.234,5";CX');expect(rows[1][1]).toContain('aspas');expect(mapearEstoque(rows.slice(1),m).itens[0].quantidade).toBe(1234.5);});
+it('rejeita quantidade ausente/negativa e códigos científicos sem inventar saldo',()=>{const r=mapearEstoque([['7.891E+12','A','-2','CX'],['7891234567895','B','','UN']],m);expect(r.erros).toHaveLength(2);});
+it('preserva sem EAN e rejeita GTIN/unidade duplicado inclusive zeros',()=>{const r=mapearEstoque([['7891234567895','A','1','CX'],['07891234567895','B','2','cx'],['','C','3','UN']],m);expect(r.erros.length).toBeGreaterThan(0);expect(r.itens.some(x=>x.ean===null)).toBe(true);});
+it('não aceita fórmula de quantidade nem mais colunas que cabeçalho silenciosamente',()=>{expect(mapearEstoque([['7891234567895','A','=1+1','CX']],m).erros).toHaveLength(1);expect(()=>lerCSV('a,b\n"sem fechamento')).toThrow();});
+it('aceita CSV com vírgula, BOM e saldo zero',()=>{expect(mapearEstoque(lerCSV('\ufeffEAN,Nome,Saldo,Unidade\n7891234567895,A,0,CX').slice(1),m).itens[0].quantidade).toBe(0);});
+it('mapping exige colunas distintas e unidade pode ser declarada fixa',()=>{expect(mapearEstoque([['7891234567895','A','1']],{ean:0,produto:1,quantidade:2,unidade:-1},'CX').itens[0].unidade).toBe('CX');expect(()=>mapearEstoque([],{...m,quantidade:0})).toThrow();});
+it('distingue formato brasileiro de decimal ponto explicitamente',()=>{const row=[['7891234567895','A','1.234','CX']];expect(mapearEstoque(row,m,'','br').itens[0].quantidade).toBe(1234);expect(mapearEstoque(row,m,'','decimal').itens[0].quantidade).toBe(1.234);});

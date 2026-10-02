@@ -4,6 +4,8 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
+import { useNavegacaoPerfil } from "../../lib/auth/useNavegacaoPerfil";
+import { resolveRole } from "../../lib/auth/rbac";
 
 type Autorizacao = {
   id: string;
@@ -60,6 +62,8 @@ export default function Autorizacoes() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
 
+  const navegacao = useNavegacaoPerfil();
+
   async function pesquisar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -99,12 +103,44 @@ export default function Autorizacoes() {
         return;
       }
 
+      const { data: perfilUsuario, error: perfilError } = await supabase
+        .from("users")
+        .select("farm_id, perfil, status")
+        .eq("id", user.id)
+        .single();
+      if (perfilError || !perfilUsuario || perfilUsuario.status !== "active") {
+        setErro("Não foi possível validar sua farmácia.");
+        setAutorizacoes([]);
+        return;
+      }
+
+      const { data: rbkAdmin } = await supabase
+        .from("rbk_admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .eq("ativo", true)
+        .maybeSingle();
+      const role = resolveRole(perfilUsuario.perfil, Boolean(rbkAdmin));
+      if (!role) {
+        setErro("Perfil sem acesso às autorizações.");
+        setAutorizacoes([]);
+        return;
+      }
+
       let consulta = supabase
         .from("autorizacoes")
         .select(
           "id, numero_autorizacao, data_autorizacao, farmacia, observacao"
-        )
-        .eq("user_id", user.id);
+        );
+
+      if (role === "operador" || role === "administrador_farmacia" || role === "gerente_farmacia") {
+        if (!perfilUsuario.farm_id) {
+          setErro("Farmácia não vinculada ao perfil.");
+          setAutorizacoes([]);
+          return;
+        }
+        consulta = consulta.eq("farm_id", perfilUsuario.farm_id);
+      }
 
       if (cpfNumeros) {
         consulta = consulta.eq("cpf_cliente", cpfNumeros);
@@ -164,12 +200,12 @@ export default function Autorizacoes() {
         <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
           <RbkBrand compact />
 
-          <Link
-            href="/farmacia"
+          {navegacao && (<Link
+            href={navegacao.href}
             className="text-sm font-bold text-gray-500 transition hover:text-red-600"
           >
-            Início
-          </Link>
+            {navegacao.href === "/dashboard" ? navegacao.label : "Início"}
+          </Link>)}
         </div>
       </header>
 

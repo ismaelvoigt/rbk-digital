@@ -1,0 +1,13 @@
+node_modules
+.next
+.env*
+.git
+outputs
+work
+private
+tools
+tests
+/supabase
+docs
+*.tsbuildinfo
+**/*.login-backup

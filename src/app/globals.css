@@ -134,3 +134,11 @@ button, input, textarea { font: inherit; }
   font-size: 12px;
   font-weight: 700;
 }
+
+.rbk-gestor-nav { max-width:1200px; margin:0 auto; padding:16px 24px 0; font-size:14px; }
+.rbk-gestor-nav a { color:#b9040e;font-weight:600; }
+.rbk-gestor-logout button { min-height:40px;padding:8px 20px;border:1px solid #e5e7eb;border-radius:10px;color:#b9040e;background:white;cursor:pointer;font-weight:600; }
+.rbk-gestor-logout button:disabled { opacity:.5;cursor:wait; }
+.rbk-gestor-logout p { color:#b9040e;font-size:12px;max-width:200px; }
+.gestor-account { display:flex;align-items:center;gap:20px; }
+@media(max-width:600px) { .gestor-account { gap:10px; } }

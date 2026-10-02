@@ -1,6 +1,160 @@
+import { normalizeTelefone } from "../../../lib/cadastro/telefone";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { normalizeCnpj } from "../../../lib/auditoria/cnpj";
 import { createAdminClient } from "../../../lib/supabase/admin";
+
+
+export async function GET(request: Request) {
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
+    const authHeader = request.headers.get("authorization");
+
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { error: "Não autorizado." },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Sessão inválida." },
+        { status: 401 }
+      );
+    }
+
+    const admin = createAdminClient();
+
+    const {
+      data: administrador,
+      error: adminError,
+    } = await admin
+      .from("rbk_admins")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .eq("ativo", true)
+      .maybeSingle();
+
+    if (adminError) {
+      console.error(
+        "Erro ao verificar administrador:",
+        adminError
+      );
+
+      return NextResponse.json(
+        { error: "Não foi possível validar as permissões." },
+        { status: 500 }
+      );
+    }
+
+    if (!administrador) {
+      return NextResponse.json(
+        {
+          error:
+            "Acesso restrito aos administradores do RBK Digital.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const cnpj = normalizeCnpj(searchParams.get("cnpj") ?? "");
+    const id = (searchParams.get("id") ?? "").trim();
+
+    let query = admin
+      .from("users")
+      .select(`
+        id,
+        farm_id,
+        nome,
+        email,
+        perfil,
+        status,
+        created_at,
+        last_access_at,
+        farms!users_farm_id_fkey (
+          razao_social,
+          nome_fantasia,
+          cnpj,
+          telefone,
+          cidade,
+          estado,
+          status
+        )
+      `)
+      .eq("perfil", "farmacia")
+      .order("created_at", { ascending: false });
+
+    if (id) {
+      query = query.eq("id", id);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error(
+        "Erro ao consultar farmácias:",
+        error
+      );
+
+      return NextResponse.json(
+        { error: "Não foi possível consultar as farmácias." },
+        { status: 500 }
+      );
+    }
+
+    const acessos = await admin.rpc("usuarios_acessos", { p_actor: user.id });
+    if (acessos.error) return NextResponse.json({ error: "Não foi possível verificar os últimos acessos." }, { status: 503 });
+    const porUsuario = new Map<string, string | null>((acessos.data ?? []).map((acesso: { user_id: string; last_access_at: string | null }) => [acesso.user_id, acesso.last_access_at]));
+    const usuarios = (data ?? []).map((usuario) => ({ ...usuario, last_access_at: porUsuario.get(usuario.id) ?? usuario.last_access_at })).filter((usuario) => {
+      if (!cnpj) return true;
+
+      const farm = Array.isArray(usuario.farms)
+        ? usuario.farms[0]
+        : usuario.farms;
+
+      return (
+        typeof farm?.cnpj === "string" &&
+        normalizeCnpj(farm.cnpj) === cnpj
+      );
+    });
+
+    return NextResponse.json(
+      {
+        usuarios,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error(
+      "Erro inesperado ao consultar farmácias:",
+      error
+    );
+
+    return NextResponse.json(
+      { error: "Erro interno ao consultar as farmácias." },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -88,14 +242,29 @@ export async function POST(request: Request) {
       body.nome_fantasia ?? ""
     ).trim();
 
-    const cnpj = String(
-      body.cnpj ?? ""
-    ).replace(/\D/g, "");
+    const cnpj = normalizeCnpj(String(body.cnpj ?? ""));
 
     const email = String(
       body.email ?? ""
     ).trim()
       .toLowerCase();
+
+    const telefone = normalizeTelefone(String(body.telefone ?? ""));
+    if (telefone === null) {
+      return NextResponse.json(
+        { error: "Informe um telefone com DDD e 10 ou 11 dígitos: (11) 3333-4444 ou (11) 99999-9999." },
+        { status: 400 }
+      );
+    }
+
+    const cidade = String(
+      body.cidade ?? ""
+    ).trim();
+
+    const estado = String(
+      body.estado ?? ""
+    ).trim()
+      .toUpperCase();
 
     if (!razaoSocial || !cnpj || !email) {
       return NextResponse.json(
@@ -107,51 +276,30 @@ export async function POST(request: Request) {
       );
     }
 
-    if (cnpj.length !== 14) {
+    if (!/^[A-Z0-9]{12}[0-9]{2}$/.test(cnpj)) {
       return NextResponse.json(
         {
-          error: "O CNPJ deve conter 14 dígitos.",
+          error: "O CNPJ deve conter 14 caracteres, com os dois últimos numéricos.",
         },
         { status: 400 }
       );
     }
 
-    /*
-     * 3. Verifica se o CNPJ já está cadastrado.
-     */
-    const {
-      data: farmExistente,
-      error: farmBuscaError,
-    } = await admin
-      .from("farms")
-      .select("id, razao_social")
-      .eq("cnpj", cnpj)
-      .maybeSingle();
-
-    if (farmBuscaError) {
-      console.error(
-        "Erro ao verificar CNPJ:",
-        farmBuscaError
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            "Não foi possível verificar o CNPJ.",
-        },
-        { status: 500 }
-      );
-    }
-
-    if (farmExistente) {
-      return NextResponse.json(
-        {
-          error:
-            "Já existe uma farmácia cadastrada com este CNPJ.",
-        },
-        { status: 409 }
-      );
-    }
+    // Resolve the master record by normalized CNPJ. Processes keep their own IDs.
+    const farmPayload = { razao_social: razaoSocial, nome_fantasia: nomeFantasia,
+      cnpj, telefone, cidade, estado };
+    const lookup = await admin.rpc("cadastro_farmacia_cnpj", {
+      p_actor: user.id, payload: farmPayload, p_create: false,
+    });
+    if (lookup.error) return NextResponse.json(
+      { error: "Não foi possível verificar o cadastro da farmácia." }, { status: 503 });
+    const farmExistente = lookup.data?.farm;
+    const resolveFarm = async () => {
+      const result = await admin.rpc("cadastro_farmacia_cnpj", {
+        p_actor: user.id, payload: farmPayload, p_create: true,
+      });
+      return { data: result.data?.farm, error: result.error };
+    };
 
     /*
      * 4. Procura o e-mail no Supabase Auth.
@@ -248,6 +396,11 @@ export async function POST(request: Request) {
        * Se já existe registro em users, esse acesso já
        * pertence a alguma estrutura do RBK Digital.
        */
+      if (usuarioExistente?.perfil === "farmacia" && farmExistente && usuarioExistente.farm_id === farmExistente.id) {
+        return NextResponse.json({ success: true, tipo_acesso: "existente",
+          mensagem: "Esta farmácia e este acesso já estão cadastrados. Você pode criar novos processos para o mesmo CNPJ.",
+          farm: farmExistente, usuario: usuarioExistente }, { status: 200 });
+      }
       if (usuarioExistente) {
         return NextResponse.json(
           {
@@ -269,18 +422,7 @@ export async function POST(request: Request) {
       const {
         data: farm,
         error: farmError,
-      } = await admin
-        .from("farms")
-        .insert({
-          razao_social: razaoSocial,
-          nome_fantasia: nomeFantasia || null,
-          cnpj,
-          status: "active",
-        })
-        .select(
-          "id, razao_social, nome_fantasia, cnpj, status, created_at"
-        )
-        .single();
+      } = await resolveFarm();
 
       if (farmError || !farm) {
         console.error(
@@ -321,15 +463,10 @@ export async function POST(request: Request) {
           usuarioError
         );
 
-        await admin
-          .from("farms")
-          .delete()
-          .eq("id", farm.id);
-
         return NextResponse.json(
           {
             error:
-              "A farmácia foi criada, mas não foi possível vincular o acesso existente.",
+              "Não foi possível vincular o acesso. O cadastro da farmácia foi preservado.",
           },
           { status: 500 }
         );
@@ -348,6 +485,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Verify SMTP and load the guide before creating a new account.
+    const { preparePharmacyInvitation } = await import("../../../lib/cadastro/invitation");
+    let sendInvitation: Awaited<ReturnType<typeof preparePharmacyInvitation>>;
+    try {
+      sendInvitation = await preparePharmacyInvitation();
+    } catch {
+      return NextResponse.json(
+        { error: "O envio de convites está indisponível. Nenhum cadastro foi criado. Tente novamente mais tarde." },
+        { status: 503 }
+      );
+    }
+
     /*
      * 7. E-mail novo:
      * cria a farmácia primeiro.
@@ -355,18 +504,7 @@ export async function POST(request: Request) {
     const {
       data: farm,
       error: farmError,
-    } = await admin
-      .from("farms")
-      .insert({
-        razao_social: razaoSocial,
-        nome_fantasia: nomeFantasia || null,
-        cnpj,
-        status: "active",
-      })
-      .select(
-        "id, razao_social, nome_fantasia, cnpj, status, created_at"
-      )
-      .single();
+    } = await resolveFarm();
 
     if (farmError || !farm) {
       console.error(
@@ -384,28 +522,27 @@ export async function POST(request: Request) {
     }
 
     /*
-     * 8. Envia o convite para um e-mail novo.
+     * 8. Gera o link seguro sem enviar o e-mail padrão do Supabase.
      */
     const {
       data: convite,
       error: conviteError,
-    } = await admin.auth.admin.inviteUserByEmail(email);
+    } = await admin.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: { redirectTo: "https://rbk-digital.vercel.app/primeiro-acesso" },
+    });
 
-    if (conviteError || !convite.user) {
+    if (conviteError || !convite.user || !convite.properties?.hashed_token) {
       console.error(
         "Erro ao enviar convite:",
         conviteError
       );
 
-      await admin
-        .from("farms")
-        .delete()
-        .eq("id", farm.id);
-
       return NextResponse.json(
         {
           error:
-            "Não foi possível enviar o convite de acesso. A farmácia não foi cadastrada.",
+            "Não foi possível enviar o convite de acesso. O cadastro da farmácia foi preservado.",
         },
         { status: 400 }
       );
@@ -442,17 +579,28 @@ export async function POST(request: Request) {
         convite.user.id
       );
 
-      await admin
-        .from("farms")
-        .delete()
-        .eq("id", farm.id);
-
       return NextResponse.json(
         {
           error:
             "Não foi possível concluir o cadastro do usuário.",
         },
         { status: 500 }
+      );
+    }
+
+    // Send only once the pharmacy and its access record are both persisted.
+    try {
+      const primeiroAcesso = new URL("https://rbk-digital.vercel.app/primeiro-acesso");
+      primeiroAcesso.searchParams.set("type", "invite");
+      primeiroAcesso.searchParams.set("token_hash", convite.properties.hashed_token);
+      await sendInvitation(email, nomeFantasia || razaoSocial, primeiroAcesso.toString());
+    } catch {
+      // Keep failed registrations retryable, as in the previous invite flow.
+      await admin.from("users").delete().eq("id", convite.user.id);
+      await admin.auth.admin.deleteUser(convite.user.id);
+      return NextResponse.json(
+        { error: "Não foi possível enviar o convite com o guia. O cadastro da farmácia foi preservado. Tente novamente mais tarde." },
+        { status: 502 }
       );
     }
 
@@ -480,6 +628,560 @@ export async function POST(request: Request) {
       {
         error:
           "Erro interno ao cadastrar a farmácia.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+
+/**
+ * PATCH /api/usuarios
+ *
+ * Atualiza o cadastro de uma farmácia/usuário pelo ID do registro
+ * em public.users.
+ *
+ * Regras:
+ * - acesso somente administrativo;
+ * - CNPJ é somente leitura;
+ * - razão social, nome fantasia, e-mail, telefone, cidade e UF podem
+ *   ser alterados;
+ * - status active/inactive controla imediatamente o acesso;
+ * - histórico da farmácia não é excluído.
+ */
+export async function PATCH(request: Request) {
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
+    const authHeader = request.headers.get("authorization");
+
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { error: "Não autorizado." },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Sessão inválida." },
+        { status: 401 }
+      );
+    }
+
+    const admin = createAdminClient();
+
+    const {
+      data: administrador,
+      error: adminError,
+    } = await admin
+      .from("rbk_admins")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .eq("ativo", true)
+      .maybeSingle();
+
+    if (adminError) {
+      console.error(
+        "Erro ao verificar administrador:",
+        adminError
+      );
+
+      return NextResponse.json(
+        { error: "Não foi possível validar as permissões." },
+        { status: 500 }
+      );
+    }
+
+    if (!administrador) {
+      return NextResponse.json(
+        {
+          error:
+            "Acesso restrito aos administradores do RBK Digital.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+
+    const id = String(body.id ?? "").trim();
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "O ID do usuário é obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    /*
+     * Alteração exclusiva de status.
+     *
+     * Usada pela ação "Excluir farmácia", que realiza inativação lógica.
+     * Não altera os demais dados cadastrais e não remove histórico.
+     */
+    const chavesBody = Object.keys(body).filter(
+      (chave) => body[chave] !== undefined
+    );
+
+    const alteracaoSomenteStatus =
+      chavesBody.every((chave) =>
+        ["id", "status"].includes(chave)
+      ) &&
+      chavesBody.includes("status");
+
+    if (alteracaoSomenteStatus) {
+      const statusRecebido = String(
+        body.status ?? ""
+      ).trim().toLowerCase();
+
+      const status =
+        statusRecebido === "inactive" ||
+        statusRecebido === "inativo"
+          ? "inactive"
+          : statusRecebido === "active" ||
+              statusRecebido === "ativo"
+            ? "active"
+            : null;
+
+      if (!status) {
+        return NextResponse.json(
+          { error: "Status inválido." },
+          { status: 400 }
+        );
+      }
+
+      const {
+        data: usuarioAtual,
+        error: usuarioBuscaError,
+      } = await admin
+        .from("users")
+        .select("id, farm_id, perfil, status")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (usuarioBuscaError) {
+        console.error(
+          "Erro ao consultar usuário para alteração de status:",
+          usuarioBuscaError
+        );
+
+        return NextResponse.json(
+          { error: "Não foi possível localizar o usuário." },
+          { status: 500 }
+        );
+      }
+
+      if (!usuarioAtual) {
+        return NextResponse.json(
+          { error: "Usuário não encontrado." },
+          { status: 404 }
+        );
+      }
+
+      if (usuarioAtual.perfil !== "farmacia") {
+        return NextResponse.json(
+          { error: "O usuário informado não pertence a uma farmácia." },
+          { status: 400 }
+        );
+      }
+
+      const { error: farmUpdateError } = await admin
+        .from("farms")
+        .update({ status })
+        .eq("id", usuarioAtual.farm_id);
+
+      if (farmUpdateError) {
+        console.error(
+          "Erro ao atualizar status da farmácia:",
+          farmUpdateError
+        );
+
+        return NextResponse.json(
+          { error: "Não foi possível alterar o status da farmácia." },
+          { status: 500 }
+        );
+      }
+
+      const { error: userUpdateError } = await admin
+        .from("users")
+        .update({ status })
+        .eq("id", id);
+
+      if (userUpdateError) {
+        console.error(
+          "Erro ao atualizar status do usuário:",
+          userUpdateError
+        );
+
+        /*
+         * Tenta restaurar o status da farmácia para evitar divergência
+         * entre users e farms caso a segunda atualização falhe.
+         */
+        await admin
+          .from("farms")
+          .update({ status: usuarioAtual.status })
+          .eq("id", usuarioAtual.farm_id);
+
+        return NextResponse.json(
+          { error: "Não foi possível alterar o status do usuário." },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        id,
+        status,
+        exclusao_logica: status === "inactive",
+      });
+    }
+
+    /*
+     * O CNPJ recebido pelo cliente é deliberadamente ignorado.
+     *
+     * CNPJ é somente leitura no perfil do gestor.
+     * Não fazemos update de farms.cnpj.
+     */
+    const razaoSocial = String(
+      body.razao_social ?? ""
+    ).trim();
+
+    const nomeFantasia = String(
+      body.nome_fantasia ?? ""
+    ).trim();
+
+    const email = String(
+      body.email ?? ""
+    ).trim().toLowerCase();
+
+    const telefone = normalizeTelefone(String(body.telefone ?? ""));
+    if (telefone === null) {
+      return NextResponse.json(
+        { error: "Informe um telefone com DDD e 10 ou 11 dígitos: (11) 3333-4444 ou (11) 99999-9999." },
+        { status: 400 }
+      );
+    }
+
+    const cidade = String(
+      body.cidade ?? body.cidade ?? ""
+    ).trim();
+
+    const estado = String(
+      body.estado ?? body.uf ?? ""
+    ).trim().toUpperCase();
+
+    const statusRecebido = String(
+      body.status ?? ""
+    ).trim().toLowerCase();
+
+    const status =
+      statusRecebido === "inactive" ||
+      statusRecebido === "inativo"
+        ? "inactive"
+        : "active";
+
+    if (!razaoSocial) {
+      return NextResponse.json(
+        { error: "A Razão Social é obrigatória." },
+        { status: 400 }
+      );
+    }
+
+    if (!email) {
+      return NextResponse.json(
+        { error: "O e-mail é obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    if (!email.includes("@")) {
+      return NextResponse.json(
+        { error: "Informe um e-mail válido." },
+        { status: 400 }
+      );
+    }
+
+    if (estado && estado.length !== 2) {
+      return NextResponse.json(
+        { error: "O Estado/UF deve conter 2 letras." },
+        { status: 400 }
+      );
+    }
+
+    const {
+      data: usuarioAtual,
+      error: usuarioBuscaError,
+    } = await admin
+      .from("users")
+      .select(
+        "id, farm_id, nome, email, perfil, status"
+      )
+      .eq("id", id)
+      .maybeSingle();
+
+    if (usuarioBuscaError) {
+      console.error(
+        "Erro ao consultar usuário:",
+        usuarioBuscaError
+      );
+
+      return NextResponse.json(
+        { error: "Não foi possível localizar o usuário." },
+        { status: 500 }
+      );
+    }
+
+    if (!usuarioAtual) {
+      return NextResponse.json(
+        { error: "Usuário não encontrado." },
+        { status: 404 }
+      );
+    }
+
+    if (usuarioAtual.perfil !== "farmacia") {
+      return NextResponse.json(
+        {
+          error:
+            "Este cadastro não corresponde a um acesso de farmácia.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const {
+      data: farmAtual,
+      error: farmBuscaError,
+    } = await admin
+      .from("farms")
+      .select(
+        "id, razao_social, nome_fantasia, cnpj, cidade, estado, telefone, status"
+      )
+      .eq("id", usuarioAtual.farm_id)
+      .maybeSingle();
+
+    if (farmBuscaError) {
+      console.error(
+        "Erro ao consultar farmácia:",
+        farmBuscaError
+      );
+
+      return NextResponse.json(
+        { error: "Não foi possível localizar a farmácia." },
+        { status: 500 }
+      );
+    }
+
+    if (!farmAtual) {
+      return NextResponse.json(
+        { error: "Farmácia não encontrada." },
+        { status: 404 }
+      );
+    }
+
+    /*
+     * Nunca altera farms.cnpj.
+     *
+     * A presença deste comentário e a ausência de cnpj no objeto
+     * de update são intencionais: o CNPJ é somente leitura.
+     */
+    const dadosFarmacia = {
+      razao_social: razaoSocial,
+      nome_fantasia: nomeFantasia || null,
+      telefone: telefone || null,
+      cidade: cidade || null,
+      estado: estado || null,
+      status,
+    };
+
+    const {
+      error: farmUpdateError,
+    } = await admin
+      .from("farms")
+      .update(dadosFarmacia)
+      .eq("id", farmAtual.id);
+
+    if (farmUpdateError) {
+      console.error(
+        "Erro ao atualizar farmácia:",
+        farmUpdateError
+      );
+
+      return NextResponse.json(
+        { error: "Não foi possível atualizar a farmácia." },
+        { status: 500 }
+      );
+    }
+
+    /*
+     * Atualiza o registro do RBK Digital.
+     *
+     * O status é mantido sincronizado para que o controle de acesso
+     * existente possa bloquear imediatamente uma farmácia inativa.
+     */
+    const {
+      error: usuarioUpdateError,
+    } = await admin
+      .from("users")
+      .update({
+        nome: razaoSocial,
+        email,
+        status,
+      })
+      .eq("id", usuarioAtual.id);
+
+    if (usuarioUpdateError) {
+      console.error(
+        "Erro ao atualizar usuário:",
+        usuarioUpdateError
+      );
+
+      /*
+       * Tentativa de restauração dos dados da farmácia caso a segunda
+       * etapa falhe.
+       */
+      await admin
+        .from("farms")
+        .update({
+          razao_social: farmAtual.razao_social,
+          nome_fantasia: farmAtual.nome_fantasia,
+          telefone: farmAtual.telefone,
+          cidade: farmAtual.cidade,
+          estado: farmAtual.estado,
+          status: farmAtual.status,
+        })
+        .eq("id", farmAtual.id);
+
+      return NextResponse.json(
+        {
+          error:
+            "Não foi possível atualizar o acesso da farmácia. Os dados da farmácia foram restaurados.",
+        },
+        { status: 500 }
+      );
+    }
+
+    /*
+     * Sincroniza o e-mail do usuário no Supabase Auth.
+     *
+     * Só executa se o e-mail realmente mudou.
+     */
+    if (
+      usuarioAtual.email?.toLowerCase() !== email
+    ) {
+      const {
+        error: authUpdateError,
+      } = await admin.auth.admin.updateUserById(
+        usuarioAtual.id,
+        {
+          email,
+        }
+      );
+
+      if (authUpdateError) {
+        console.error(
+          "Erro ao atualizar e-mail no Supabase Auth:",
+          authUpdateError
+        );
+
+        /*
+         * Restaura os dados de aplicação se a sincronização do Auth
+         * falhar.
+         */
+        await admin
+          .from("users")
+          .update({
+            nome: usuarioAtual.nome,
+            email: usuarioAtual.email,
+            status: usuarioAtual.status,
+          })
+          .eq("id", usuarioAtual.id);
+
+        await admin
+          .from("farms")
+          .update({
+            razao_social: farmAtual.razao_social,
+            nome_fantasia: farmAtual.nome_fantasia,
+            telefone: farmAtual.telefone,
+            cidade: farmAtual.cidade,
+            estado: farmAtual.estado,
+            status: farmAtual.status,
+          })
+          .eq("id", farmAtual.id);
+
+        return NextResponse.json(
+          {
+            error:
+              "Os dados não foram alterados porque não foi possível sincronizar o novo e-mail de acesso.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    const {
+      data: farmAtualizada,
+      error: farmFinalError,
+    } = await admin
+      .from("farms")
+      .select(
+        "id, razao_social, nome_fantasia, cnpj, telefone, cidade, estado, status, created_at"
+      )
+      .eq("id", farmAtual.id)
+      .single();
+
+    if (farmFinalError) {
+      console.error(
+        "Erro ao consultar farmácia atualizada:",
+        farmFinalError
+      );
+    }
+
+    const {
+      data: usuarioAtualizado,
+    } = await admin
+      .from("users")
+      .select(
+        "id, farm_id, nome, email, perfil, status, created_at, last_access_at"
+      )
+      .eq("id", usuarioAtual.id)
+      .single();
+
+    return NextResponse.json(
+      {
+        success: true,
+        mensagem: "Cadastro da farmácia atualizado com sucesso.",
+        farm: farmAtualizada ?? null,
+        usuario: usuarioAtualizado ?? null,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error(
+      "Erro inesperado ao atualizar farmácia:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Erro interno ao atualizar o cadastro da farmácia.",
       },
       { status: 500 }
     );

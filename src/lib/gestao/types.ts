@@ -1,0 +1,15 @@
+export const statusCRM=['Novo lead','Em contato','Interessado','Aguardando oportunidade','Proposta enviada','Cliente','Sem interesse'];
+export const interesses=['Credenciamento','Auditoria','Renovação','RBK Digital','ANVISA','Compra/Venda de CNPJ','Notícias/Comunicados PFPB'];
+export const servicos=['Auditoria','Credenciamento','Renovação','ANVISA','RBK Digital','Outros serviços avulsos'];
+export const formas=['Pix','Pix Automático','Boleto/Pix','Cartão recorrente','Transferência','Dinheiro','Outro'];
+export const estados=['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+export type Contexto={actor_id:string;responsaveis:{id:string;nome:string}[]};
+export type Cliente={id:string;razao_social:string;cnpj:string|null;farm_id:string|null;contato:string;whatsapp:string;email:string;cidade:string;uf:string;origem:string;interesses:string[];ultimo_contato:string|null;proxima_acao:string;proxima_acao_data:string|null;responsavel_id:string;observacoes:string;status:string;aguardando_credenciamento:boolean;oportunidade_referencia:string;updated_at:string};
+export type Contrato={id:string;cliente_id:string;servico:string;valor:number;forma_pagamento:string;data_contratacao:string;vencimento:string;observacoes:string;plano:string;data_inicio:string;dia_vencimento:number|null;status:string;updated_at:string;razao_social?:string;cnpj?:string;proxima_cobranca?:string|null;pagamento_status?:string};
+export type Cobranca={id:string;competencia:string;vencimento:string;valor:number;pago:number;saldo:number;status:string};
+export type Pagamento={id:string;cobranca_id:string;valor:number;data_pagamento:string;forma_pagamento:string;observacoes:string};
+export type Detalhe={contrato:Contrato;cobrancas:Cobranca[];pagamentos:Pagamento[]};
+export type Lista<T>={items:T[];total:number};
+export type Indicadores={mrr:number;recebido_mes:number;a_receber:number;atrasados:number;quantidade_atrasados:number;assinaturas_ativas:number};
+export type Financeiro=Lista<Contrato>&{indicadores:Indicadores};
+export type Comunicado={id:string;titulo:string;texto:string;canal:string;segmento:Record<string,unknown>;status:string;updated_at:string};

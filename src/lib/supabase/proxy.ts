@@ -2,12 +2,41 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getAccessDecision } from "../auth/accessPolicy";
+import { resolveRole } from "../auth/rbac";
+import { isAuthSessionCookie, PERSISTENCE_COOKIE, sessionCookieOptions } from "../auth/sessionPersistence";
 import { createAdminClient } from "./admin";
 
 export async function updateSession(request: NextRequest) {
+  // These exact routes authorize independently; portal capability never grants a session.
+  const auditPath = request.nextUrl.pathname;
+  if (auditPath === '/api/cupons/processar' || auditPath === '/api/cupons/worker' || auditPath === '/portal/credenciamento' || auditPath === '/api/credenciamento' || auditPath === '/portal/auditoria' || auditPath === '/api/portal-auditoria' || auditPath === '/api/auditorias' || auditPath.startsWith('/api/auditorias/')) {
+    const response = NextResponse.next({request});
+    response.headers.set('Cache-Control', 'private, no-store');
+    response.headers.set('Referrer-Policy', 'no-referrer');
+    response.headers.set('X-Frame-Options', auditPath === '/portal/credenciamento' ? 'SAMEORIGIN' : 'DENY');
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    return response;
+  }
+  if (["/primeiro-acesso", "/redefinir-senha", "/esqueci-minha-senha"].includes(auditPath)) {
+    const response = NextResponse.next({request});
+    response.headers.set('Cache-Control', 'private, no-store');
+    response.headers.set('Referrer-Policy', 'no-referrer');
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    return response;
+  }
   let supabaseResponse = NextResponse.next({
     request,
   });
+
+  // Refreshes must keep the storage policy, including on public API routes.
+  const persistent = request.cookies.get(PERSISTENCE_COOKIE)?.value === "farmacia";
+  function redirect(url: URL) {
+    if (request.nextUrl.pathname === "/" && url.pathname === "/") return supabaseResponse;
+    const response = NextResponse.redirect(url);
+    for (const cookie of supabaseResponse.cookies.getAll()) response.cookies.set(cookie);
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,7 +57,7 @@ export async function updateSession(request: NextRequest) {
           });
 
           cookiesToSet.forEach(({ name, value, options }) => {
-            supabaseResponse.cookies.set(name, value, options);
+            supabaseResponse.cookies.set(name, value, sessionCookieOptions(persistent, options));
           });
 
           Object.entries(headers).forEach(([key, value]) => {
@@ -52,7 +81,12 @@ export async function updateSession(request: NextRequest) {
    * Rotas públicas.
    */
   if (
-    pathname === "/" ||
+    (pathname === "/" && !claims?.sub) ||
+    pathname === "/redefinir-senha" ||
+    pathname === "/manifest.webmanifest" ||
+    // A rota administrativa valida seu próprio Authorization Bearer.
+    pathname === "/api/equipe" || pathname === "/api/usuarios" || pathname === "/api/usuarios/exclusao" ||
+    pathname === "/api/processos" || pathname.startsWith("/api/processos/") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon")
   ) {
@@ -66,7 +100,7 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
 
-    return NextResponse.redirect(url);
+    return redirect(url);
   }
 
   /*
@@ -89,18 +123,52 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
 
-    return NextResponse.redirect(url);
+    return redirect(url);
   }
 
   /*
    * Usuário autenticado no Supabase, mas sem registro
    * válido na tabela de usuários do RBK Digital.
    */
-  if (!usuario || usuario.status === "inativo") {
+  if (!usuario || usuario.status !== "active") {
     const url = request.nextUrl.clone();
     url.pathname = "/";
 
-    return NextResponse.redirect(url);
+    return redirect(url);
+  }
+
+  // Usa a mesma fonte de permissão administrativa da tela de login,
+  // sem dispensar a verificação de status active acima.
+  const { data: administrador, error: adminError } = await admin
+    .from("rbk_admins")
+    .select("user_id")
+    .eq("user_id", claims.sub)
+    .eq("ativo", true)
+    .maybeSingle();
+
+  if (adminError) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return redirect(url);
+  }
+
+  // Reapply even without a token refresh: migrate existing cookies and make
+  // rbk_admins take precedence over a legacy farmacia profile.
+  const persistFarmacia = usuario.perfil === "farmacia" && !administrador;
+  const cookieOptions = sessionCookieOptions(persistFarmacia);
+  supabaseResponse.cookies.set(PERSISTENCE_COOKIE, persistFarmacia ? "farmacia" : "session", cookieOptions);
+  for (const { name, value } of request.cookies.getAll().filter(c => isAuthSessionCookie(c.name))) {
+    if (value) supabaseResponse.cookies.set(name, value, cookieOptions);
+  }
+  supabaseResponse.headers.set("Cache-Control", "private, no-store");
+
+  if (pathname === "/") {
+    if (persistFarmacia) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/farmacia";
+      return redirect(url);
+    }
+    return supabaseResponse;
   }
 
   /*
@@ -108,7 +176,7 @@ export async function updateSession(request: NextRequest) {
    */
   const decision = getAccessDecision({
     authenticated: true,
-    perfil: usuario.perfil,
+    perfil: resolveRole(usuario.perfil, Boolean(administrador)),
     pathname,
   });
 
@@ -116,7 +184,7 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = decision.redirectTo;
 
-    return NextResponse.redirect(url);
+    return redirect(url);
   }
 
   return supabaseResponse;

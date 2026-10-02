@@ -2,6 +2,18 @@ import { describe, expect, it } from "vitest";
 import { getAccessDecision } from "../src/lib/auth/accessPolicy";
 
 describe("política de acesso do RBK Digital", () => {
+  it("separa operação da farmácia, monitoramento e configuração RBK", () => {
+    const allowed = (perfil: string, pathname: string) =>
+      getAccessDecision({ authenticated: true, perfil, pathname }).allowed;
+
+    expect(allowed("operador", "/nova-autorizacao")).toBe(true);
+    expect(allowed("operador", "/monitoramento")).toBe(false);
+    expect(allowed("administrador_farmacia", "/farmacia")).toBe(true);
+    expect(allowed("administrador_farmacia", "/usuarios")).toBe(false);
+    expect(allowed("gestor_rbk", "/monitoramento")).toBe(true);
+    expect(allowed("gestor_rbk", "/usuarios")).toBe(false);
+    expect(allowed("superadmin_rbk", "/usuarios")).toBe(true);
+  });
   it("bloqueia usuário não autenticado", () => {
     expect(
       getAccessDecision({

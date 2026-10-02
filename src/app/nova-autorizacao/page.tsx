@@ -2,9 +2,13 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { dispararExtracao } from "../../lib/cupons/client";
 import DocumentUploadCard from "../../components/documentos/DocumentUploadCard";
 import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
+import { mensagemErroAutorizacao } from "../../lib/documentos/mensagemErroAutorizacao";
+import CamposCrm from "../../components/relatorios/CamposCrm";
+import { normalizarCrm } from "../../lib/relatorios/filtros";
 import QrCodeScanner from "../../components/qrcode/QrCodeScanner";
 
 type Categoria =
@@ -24,17 +28,6 @@ type ArquivoSelecionado = {
   file: File | null;
   categoria: Categoria;
 };
-
-export function mensagemErroAutorizacao(error: {
-  code?: string;
-  message?: string;
-}) {
-  if (error.code === "23505") {
-    return "Esta autorização já está cadastrada. Revise o número da autorização informado. Se você esperava cadastrar uma nova autorização, confira se o número foi digitado corretamente.";
-  }
-
-  return "Não foi possível salvar a autorização.";
-}
 
 function formatarCpf(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -85,6 +78,8 @@ export default function NovaAutorizacao() {
   const [leitorQrAberto, setLeitorQrAberto] = useState(false);
   const [cpf, setCpf] = useState("");
   const [numero, setNumero] = useState("");
+  const [crm, setCrm] = useState("");
+  const [crmUf, setCrmUf] = useState("");
   const [arquivos, setArquivos] = useState<
     Record<Categoria, File | null>
   >({
@@ -120,6 +115,11 @@ export default function NovaAutorizacao() {
 
     setMensagem("");
     setErro("");
+
+    try { normalizarCrm(crm, crmUf); } catch (error) {
+      setErro(error instanceof Error ? error.message : "CRM inválido.");
+      return;
+    }
 
     if (!cpfValido(cpf)) {
       setErro("Informe um CPF válido.");
@@ -172,6 +172,7 @@ export default function NovaAutorizacao() {
             numero_autorizacao: numero.replace(/\D/g, ""),
             data_autorizacao: dataAutorizacao,
             cpf_cliente: cpf.replace(/\D/g, ""),
+            ...(crm.trim() ? normalizarCrm(crm, crmUf) : {}),
             user_id: user.id,
           })
           .select("id")
@@ -185,6 +186,7 @@ export default function NovaAutorizacao() {
           codigoErro === "23505" ||
           /duplicate|unique|already exists/i.test(mensagemErro)
         ) {
+          // Mensagem ao usuário: Esta autorização já está cadastrada.
           setErro(mensagemErroAutorizacao({ code: "23505" }));
           return;
         }
@@ -195,6 +197,7 @@ export default function NovaAutorizacao() {
         );
       }
 
+      const avisosLeitura: string[] = [];
       const categorias: Categoria[] = [
         "documento_cliente",
         "receita_medica",
@@ -239,7 +242,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
           );
         }
 
-        const { error: erroDocumento } = await supabase
+        const { data: documentoNovo, error: erroDocumento } = await supabase
           .from("documentos")
           .insert({
             autorizacao_id: autorizacao.id,
@@ -247,7 +250,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
             nome_arquivo: nomeArquivo,
             caminho_arquivo: caminho,
             status: "recebido",
-          });
+          }).select("id").single();
 
         if (erroDocumento) {
           await supabase.storage
@@ -258,6 +261,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
             `Erro ao registrar ${categoria}: ${erroDocumento.message}`
           );
         }
+        if (documentoNovo) { const aviso = await dispararExtracao(supabase, documentoNovo.id, categoria); if (aviso) avisosLeitura.push(aviso); }
         }
       }
 
@@ -267,7 +271,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
         data: dataAutorizacao,
       });
 
-      setMensagem("Autorização cadastrada com sucesso.");
+      setMensagem("Autorização cadastrada com sucesso. " + [...new Set(avisosLeitura)].join(" "));
     } catch (error) {
       const erroSupabase =
         error && typeof error === "object"
@@ -380,6 +384,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
                     setErro("");
                     setCpf("");
                     setNumero("");
+                    setCrm(""); setCrmUf("");
                     setArquivos({
                       documento_cliente: null,
                       receita_medica: null,
@@ -387,6 +392,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
                       cupom_vinculado: null,
                       outros: null,
                     });
+                    setOutrosArquivos([]);
                   }}
                   className="flex-1 rounded-[13px] border border-gray-200 bg-white px-6 py-4 text-center text-sm font-bold text-gray-700 transition hover:bg-gray-50"
                 >
@@ -490,6 +496,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
                       setResumo(null);
                       setCpf("");
                       setNumero("");
+                    setCrm(""); setCrmUf("");
                       setArquivos({
                         documento_cliente: null,
                         receita_medica: null,
@@ -537,6 +544,11 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
                 required
                 className="rbk-input"
               />
+            </div>
+
+            <div>
+              <CamposCrm prefixo="cadastro-crm" crm={crm} uf={crmUf} onChange={(numero, uf) => { setCrm(numero); setCrmUf(uf); }} />
+              <p className="mt-2 text-xs text-gray-500">Informe o CRM e a UF conforme a receita para localizar esta autorização nos relatórios.</p>
             </div>
 
             <div className="border-t border-gray-200 pt-7">
@@ -618,7 +630,6 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
           </form>
         </section>
       </div>
-
       {leitorQrAberto && (
         <QrCodeScanner onClose={() => setLeitorQrAberto(false)} />
       )}

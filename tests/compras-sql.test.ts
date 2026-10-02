@@ -1,0 +1,20 @@
+import {it,expect} from 'vitest';
+import {PGlite} from '@electric-sql/pglite';
+import {readFileSync} from 'node:fs';
+it('isola farmácias, valida lotes inteiros e evita sobrescrita concorrente',async()=>{
+const db=new PGlite();await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create schema rbk_private;create function auth.uid() returns uuid language sql as $$select nullif(current_setting('app.uid',true),'')::uuid$$;create table public.farms(id uuid primary key);insert into farms values ('00000000-0000-0000-0000-000000000001'),('00000000-0000-0000-0000-000000000002');create function rbk_private.can_access_farm(id uuid) returns boolean language sql as $$select id=auth.uid()$$;create function rbk_private.can_write_farm(id uuid) returns boolean language sql as $$select id=auth.uid()$$;create function rbk_private.actor_role() returns text language sql as $$select 'administrador_farmacia'::text$$;grant usage on schema auth,rbk_private to authenticated;`);
+await db.exec(readFileSync('supabase/compras-schema.sql','utf8'));
+await db.exec(`set role authenticated;set app.uid='00000000-0000-0000-0000-000000000001';`);
+const f='00000000-0000-0000-0000-000000000001',other='00000000-0000-0000-0000-000000000002';
+const rows=[{ean:'07891234567895',produto:'A',unidade:'CX',quantidade:0}];
+const save=(fid:string,items=rows,v:string|null=null)=>db.query('select public.compras_importar($1,$2,$3,$4,$5)',[fid,'2026-09-26','base.csv',JSON.stringify(items),v]);
+await expect(save(other)).rejects.toThrow();await save(f);
+const got=await db.query<{dados: {versao:string,itens:unknown[]}}>('select public.compras_obter($1) as dados',[f]);expect(got.rows[0].dados.itens).toEqual(rows);const ver=got.rows[0].dados.versao;
+await expect(save(f)).rejects.toThrow(/alterado/);
+await expect(save(f,[{...rows[0],quantidade:-1}],ver)).rejects.toThrow();
+await expect(save(f,[rows[0],rows[0]],ver)).rejects.toThrow();
+await expect(db.query('update public.compras_estoque set itens=\'[]\'')).rejects.toThrow();
+await db.exec(`set app.uid='${other}';`);expect((await db.query('select * from public.compras_estoque')).rows).toHaveLength(0);
+await expect(db.query('select public.compras_obter($1)',[f])).rejects.toThrow();
+await db.exec('set role anon');await expect(db.query('select public.compras_obter($1)',[f])).rejects.toThrow();await db.close();
+},15000);

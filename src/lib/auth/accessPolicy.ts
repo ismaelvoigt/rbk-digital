@@ -1,3 +1,5 @@
+import { resolveRole } from "./rbac";
+
 type AccessInput = {
   authenticated: boolean;
   perfil: string | null;
@@ -19,7 +21,11 @@ const ROTAS_ADMINISTRATIVAS = [
 ];
 
 const ROTAS_COMPARTILHADAS = [
+  "/administracao",
+  "/compras",
   "/autorizacoes",
+  "/relatorios",
+  "/vendas",
 ];
 
 const ROTA_NOVA_AUTORIZACAO = "/nova-autorizacao";
@@ -52,11 +58,28 @@ export function getAccessDecision({
     };
   }
 
-  if (perfil !== "admin" && perfil !== "farmacia") {
+  // O proxy entrega superadmin_rbk somente após confirmar rbk_admins.
+  const role = perfil === "admin" || perfil === "superadmin_rbk"
+    ? "superadmin_rbk" : resolveRole(perfil, false);
+  if (!role) {
     return {
       allowed: false,
       redirectTo: "/",
     };
+  }
+
+  const isRbk = role === "gestor_rbk" || role === "superadmin_rbk";
+  const home = isRbk ? "/dashboard" : "/farmacia";
+
+  if (isRota(pathname, "/equipe")) {
+    return role === "administrador_farmacia" ? {allowed:true} : {allowed:false,redirectTo:home};
+  }
+  if (role === "operador" && ["/administracao", "/vendas", "/compras", "/relatorios"].some(r => isRota(pathname,r))) {
+    return {allowed:false,redirectTo:home};
+  }
+
+  if (isRota(pathname, "/monitoramento") || isRota(pathname, "/processos") || isRota(pathname, "/financeiro") || isRota(pathname, "/crm")) {
+    return isRbk ? { allowed: true } : { allowed: false, redirectTo: home };
   }
 
   /*
@@ -64,7 +87,7 @@ export function getAccessDecision({
    * Administrador não utiliza essa rota.
    */
   if (isRota(pathname, ROTA_NOVA_AUTORIZACAO)) {
-    if (perfil === "farmacia") {
+    if (!isRbk) {
       return {
         allowed: true,
       };
@@ -78,7 +101,7 @@ export function getAccessDecision({
 
   /*
    * Autorizações são compartilhadas entre os dois ambientes.
-   * A segurança dos dados continua sendo garantida pelo user_id/RLS.
+   * O isolamento dos dados é aplicado pelas políticas RLS por farm_id.
    */
   if (isRotaCompartilhada(pathname)) {
     return {
@@ -90,7 +113,9 @@ export function getAccessDecision({
    * Rotas administrativas pertencem exclusivamente ao administrador.
    */
   if (isRotaAdministrativa(pathname)) {
-    if (perfil === "admin") {
+    const gestorDetalheAutorizacoes = /^\/usuarios\/[^/]+\/autorizacoes(?:\/|$)/.test(pathname);
+    if (role === "superadmin_rbk" || (role === "gestor_rbk" &&
+      (!isRota(pathname, "/usuarios") || gestorDetalheAutorizacoes))) {
       return {
         allowed: true,
       };
@@ -106,7 +131,7 @@ export function getAccessDecision({
    * Ambiente próprio da farmácia.
    */
   if (isRota(pathname, "/farmacia")) {
-    if (perfil === "farmacia") {
+    if (!isRbk) {
       return {
         allowed: true,
       };

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 
 import Link from "next/link";
+import ProximasCard from "../../components/proximas/ProximasCard";
 import { useEffect, useState } from "react";
 
 import { createClient } from "../../lib/supabase/client";
@@ -49,6 +50,7 @@ export default function FarmaciaPage() {
   const router = useRouter();
   const supabase = createClient();
 
+  const [perfil, setPerfil] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [autorizacoesHoje, setAutorizacoesHoje] = useState(0);
@@ -70,6 +72,9 @@ export default function FarmaciaPage() {
       }
 
       setEmail(user.email ?? "");
+      const {data: profile} = await supabase.from("users").select("perfil,farm_id,status").eq("id",user.id).maybeSingle();
+      if (!profile?.farm_id || profile.status !== "active") { window.location.href="/"; return; }
+      setPerfil(profile.perfil);
 
       const inicioHoje = new Date();
       inicioHoje.setHours(0, 0, 0, 0);
@@ -77,7 +82,7 @@ export default function FarmaciaPage() {
       const { data: autorizacoesData } = await supabase
         .from("autorizacoes")
         .select("id, numero_autorizacao, cpf_cliente, created_at")
-        .eq("user_id", user.id)
+        .eq("farm_id", profile.farm_id)
         .order("created_at", { ascending: false });
 
       const autorizacoes = (autorizacoesData ?? []) as AutorizacaoResumo[];
@@ -210,13 +215,14 @@ export default function FarmaciaPage() {
           </p>
         </div>
 
-        <section className="grid gap-5 sm:grid-cols-2">
+        <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <ProximasCard/>
           <Link
             href="/nova-autorizacao"
             className="rbk-card rbk-card-hover group p-6"
           >
             <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-xl font-bold text-red-600">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-xl font-bold text-red-600">
                 +
               </div>
 
@@ -239,7 +245,7 @@ export default function FarmaciaPage() {
             className="rbk-card rbk-card-hover group p-6"
           >
             <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-sm font-bold text-gray-600">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-sm font-bold text-gray-600">
                 LISTA
               </div>
 
@@ -255,6 +261,23 @@ export default function FarmaciaPage() {
             <span className="mt-5 inline-block text-sm font-bold text-red-600 transition group-hover:text-red-700">
               Consultar autorizações →
             </span>
+          </Link>
+          {perfil !== "operador" && <Link href="/administracao" className="rbk-card rbk-card-hover group hidden p-6 lg:block">
+            <div className="mb-5 flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19V5m0 14h16M8 15v-4m5 4V7m5 8v-6"/></svg></div>
+              <h2 className="text-base font-bold text-gray-900">Administração</h2>
+            </div>
+            <p className="text-sm leading-6 text-gray-500">Vendas e indicadores, planejamento de compras, relatórios e PDFs da sua farmácia.</p>
+            <span className="mt-5 inline-block text-sm font-bold text-red-600">Abrir Administração →</span>
+          </Link>}
+          {["farmacia","administrador_farmacia"].includes(perfil ?? "") && <Link href="/equipe" className="rbk-card rbk-card-hover group p-6"><div className="mb-5 flex items-center gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="3"/><path d="M7 21v-2a5 5 0 0 1 10 0v2M18 4.7a2.5 2.5 0 0 1 0 4.6M20 20v-2a4 4 0 0 0-2.5-3.7M6 4.7a2.5 2.5 0 0 0 0 4.6M4 20v-2a4 4 0 0 1 2.5-3.7"/></svg></div><h2 className="text-base font-bold text-gray-900">Equipe</h2></div><p className="text-sm leading-6 text-gray-500">Convide funcionários e gerencie os acessos da sua farmácia.</p><span className="mt-5 inline-block text-sm font-bold text-red-600">Gerenciar equipe →</span></Link>}
+          <Link href="/pendencias" className="rbk-card rbk-card-hover group p-6">
+            <div className="mb-5 flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-xl font-bold text-amber-700">!</div>
+              <h2 className="text-base font-bold text-gray-900">Pendências</h2>
+            </div>
+            <p className="text-sm leading-6 text-gray-500">Confira os documentos que precisam de atenção.</p>
+            <span className="mt-5 inline-block text-sm font-bold text-red-600">Conferir pendências →</span>
           </Link>
         </section>
 
