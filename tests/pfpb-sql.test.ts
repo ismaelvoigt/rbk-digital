@@ -7,6 +7,12 @@ it("RLS, revisão da versão atual e histórico protegido em PostgreSQL", async 
     `create role anon;create role authenticated;create schema auth;create schema storage;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;grant usage on schema auth,storage to authenticated;create table public.users(id uuid,perfil text,status text);create table public.rbk_admins(user_id uuid,ativo boolean);create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(bucket_id text,name text);create function storage.foldername(text) returns text[] language sql as $$select string_to_array($1,'/')$$;alter table storage.objects enable row level security;grant select,insert on storage.objects to authenticated;insert into auth.users values ('00000000-0000-0000-0000-000000000001'),('00000000-0000-0000-0000-000000000002'),('00000000-0000-0000-0000-000000000003');insert into public.users select id,'gestor_rbk','active' from auth.users;update public.users set perfil='farmacia' where id='00000000-0000-0000-0000-000000000003';`,
   );
   await db.exec(readFileSync("supabase/pfpb-schema.sql", "utf8"));
+  await db.exec("create table public.cre_files(kind integer check(kind between 0 and 9));insert into public.cre_files values(8),(9)");
+  await db.exec(readFileSync("supabase/credenciamento-documento-residencial.sql", "utf8"));
+  await db.exec("insert into public.cre_files values(10)");
+  expect((await db.query("select kind from public.cre_files order by kind")).rows).toEqual([{kind:8},{kind:9},{kind:10}]);
+  await expect(db.exec("insert into public.cre_files values(11)")).rejects.toThrow();
+
   await db.exec(
     `set role authenticated;set test.uid='00000000-0000-0000-0000-000000000001'`,
   );
@@ -63,7 +69,7 @@ it("RLS, revisão da versão atual e histórico protegido em PostgreSQL", async 
   await expect(db.exec(`delete from public.pfpb_reviews`)).rejects.toThrow();
   await expect(
     call("form", p.id, { revision: 3, confirmed: true }),
-  ).rejects.toThrow(/onze/);
+  ).rejects.toThrow(/doze/);
   const kinds = [
     "contrato_social",
     "endereco",
@@ -72,6 +78,7 @@ it("RLS, revisão da versão atual e histórico protegido em PostgreSQL", async 
     "cnd",
     "crt",
     "representante",
+    "residencial",
     "rt",
     "banco",
     "rta",
@@ -91,8 +98,8 @@ it("RLS, revisão da versão atual e histórico protegido em PostgreSQL", async 
     });
     await call("review", p.id, { version_id: vid, decision: "Aprovado" });
   }
-  const formed = await call("form", p.id, { revision: 13, confirmed: true });
-  expect(formed).toMatchObject({ revision: 13, formed_revision: 13 });
+  const formed = await call("form", p.id, { revision: 14, confirmed: true });
+  expect(formed).toMatchObject({ revision: 14, formed_revision: 14 });
   await call("review", p.id, {
     version_id: v2,
     decision: "Substituir",
@@ -104,8 +111,8 @@ it("RLS, revisão da versão atual e histórico protegido em PostgreSQL", async 
   );
   expect(again.rows[0].formed_revision).toBeNull();
   await expect(call("cancel", p.id, {revision:12,confirmed:true})).rejects.toThrow();
-  await expect(call("cancel", p.id, {revision:13})).rejects.toThrow();
-  const cancelled = await call("cancel", p.id, {revision:13,confirmed:true});
+  await expect(call("cancel", p.id, {revision:14})).rejects.toThrow();
+  const cancelled = await call("cancel", p.id, {revision:14,confirmed:true});
   expect(cancelled.deleted_at).toBeTruthy();
   expect((await db.query("select * from public.pfpb_processes where deleted_at is null")).rows).toHaveLength(0);
   expect((await db.query("select * from public.pfpb_versions")).rows.length).toBeGreaterThan(0);

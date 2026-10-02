@@ -1,0 +1,41 @@
+import {PGlite} from '@electric-sql/pglite';
+import {readFileSync} from 'node:fs';
+import {it,expect} from 'vitest';
+const f='10000000-0000-4000-8000-000000000001',other='10000000-0000-4000-8000-000000000002';
+const admin='20000000-0000-4000-8000-000000000001',op='20000000-0000-4000-8000-000000000002',manager='20000000-0000-4000-8000-000000000003';
+it('RLS: equipe compartilha farmácia, isola outra e bloqueia inativo e escalada',async()=>{
+ const db=new PGlite();try{
+ await db.exec(readFileSync('tests/fixtures/exclusao-schema.sql','utf8'));
+ await db.exec(`alter table auth.users add column email text;create schema rbk_private;create function auth.uid() returns uuid language sql as $$select nullif(current_setting('app.uid',true),'')::uuid$$;
+ alter table autorizacoes add primary key(id);alter table autorizacoes alter column id set default gen_random_uuid();
+ alter table audit_logs alter column id set default gen_random_uuid();alter table audit_logs alter column created_at set default now();
+ grant usage on schema auth,storage,rbk_private to authenticated;grant all on autorizacoes,documentos,users,storage.objects to authenticated;
+ alter table autorizacoes enable row level security;alter table documentos enable row level security;alter table users enable row level security;alter table audit_logs enable row level security;alter table storage.objects enable row level security;
+ insert into farms(id,cnpj,status)values('${f}','11111111111111','active'),('${other}','22222222222222','active');
+ insert into auth.users(id)values('${admin}'),('${op}'),('${manager}');
+ insert into users(id,farm_id,nome,email,perfil,status)values('${admin}','${f}','Admin','a@test.invalid','farmacia','active'),('${op}','${f}','Atendente','b@test.invalid','operador','active'),('${manager}','${other}','Outro','c@test.invalid','farmacia','active');`);
+ await db.exec(readFileSync('supabase/migrations/20260927011830_equipe_farmacia.sql','utf8'));
+ const login=async(id:string)=>db.exec(`reset role;select set_config('app.uid','${id}',false);set role authenticated;`);
+ await login(admin);
+ await db.exec(`insert into autorizacoes(user_id,numero_autorizacao) values('${admin}','ALFA')`);
+ await login(manager);await db.exec(`insert into autorizacoes(user_id,numero_autorizacao) values('${manager}','BETA')`);
+ await login(op);
+ expect((await db.query('select numero_autorizacao from autorizacoes')).rows).toEqual([{numero_autorizacao:'ALFA'}]);
+ await db.exec(`update autorizacoes set observacao='revisado' where numero_autorizacao='ALFA'`);
+ await expect(db.exec(`insert into autorizacoes(user_id,numero_autorizacao)values('${admin}','FORJADO')`)).rejects.toThrow();
+ await expect(db.exec(`update autorizacoes set farm_id='${other}'`)).rejects.toThrow();
+ await expect(db.query('select * from equipe_listar()')).rejects.toThrow();
+ expect((await db.query(`select rbk_private.can_access_farm('${f}') as allowed`)).rows).toEqual([{allowed:false}]);
+ await expect(db.exec(`update users set perfil='administrador_farmacia' where id='${op}'`)).rejects.toThrow();
+ await login(admin);
+ expect((await db.query('select id from equipe_listar()')).rows).toHaveLength(2);
+ await expect(db.query(`select equipe_salvar('${manager}','X','operador','inactive')`)).rejects.toThrow();
+ await expect(db.query(`select equipe_salvar('${admin}','Admin','operador','inactive')`)).rejects.toThrow();
+ await db.query(`select equipe_salvar('${op}','Atendente','operador','inactive')`);
+ await login(op);expect((await db.query('select * from autorizacoes')).rows).toEqual([]);
+ await expect(db.exec(`insert into autorizacoes(user_id,numero_autorizacao)values('${op}','INATIVO')`)).rejects.toThrow();
+ await db.exec('reset role');
+ expect((await db.query(`select user_id from audit_logs where entity_type='autorizacao' and action='update'`)).rows).toEqual([{user_id:op}]);
+ expect((await db.query(`select * from users where id='${op}'`)).rows).toHaveLength(1);
+ }finally{await db.close();}
+},25000);

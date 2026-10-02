@@ -2,10 +2,13 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { dispararExtracao } from "../../lib/cupons/client";
 import DocumentUploadCard from "../../components/documentos/DocumentUploadCard";
 import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
 import { mensagemErroAutorizacao } from "../../lib/documentos/mensagemErroAutorizacao";
+import CamposCrm from "../../components/relatorios/CamposCrm";
+import { normalizarCrm } from "../../lib/relatorios/filtros";
 import QrCodeScanner from "../../components/qrcode/QrCodeScanner";
 
 type Categoria =
@@ -75,6 +78,8 @@ export default function NovaAutorizacao() {
   const [leitorQrAberto, setLeitorQrAberto] = useState(false);
   const [cpf, setCpf] = useState("");
   const [numero, setNumero] = useState("");
+  const [crm, setCrm] = useState("");
+  const [crmUf, setCrmUf] = useState("");
   const [arquivos, setArquivos] = useState<
     Record<Categoria, File | null>
   >({
@@ -110,6 +115,11 @@ export default function NovaAutorizacao() {
 
     setMensagem("");
     setErro("");
+
+    try { normalizarCrm(crm, crmUf); } catch (error) {
+      setErro(error instanceof Error ? error.message : "CRM inválido.");
+      return;
+    }
 
     if (!cpfValido(cpf)) {
       setErro("Informe um CPF válido.");
@@ -162,6 +172,7 @@ export default function NovaAutorizacao() {
             numero_autorizacao: numero.replace(/\D/g, ""),
             data_autorizacao: dataAutorizacao,
             cpf_cliente: cpf.replace(/\D/g, ""),
+            ...(crm.trim() ? normalizarCrm(crm, crmUf) : {}),
             user_id: user.id,
           })
           .select("id")
@@ -186,6 +197,7 @@ export default function NovaAutorizacao() {
         );
       }
 
+      const avisosLeitura: string[] = [];
       const categorias: Categoria[] = [
         "documento_cliente",
         "receita_medica",
@@ -230,7 +242,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
           );
         }
 
-        const { error: erroDocumento } = await supabase
+        const { data: documentoNovo, error: erroDocumento } = await supabase
           .from("documentos")
           .insert({
             autorizacao_id: autorizacao.id,
@@ -238,7 +250,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
             nome_arquivo: nomeArquivo,
             caminho_arquivo: caminho,
             status: "recebido",
-          });
+          }).select("id").single();
 
         if (erroDocumento) {
           await supabase.storage
@@ -249,6 +261,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
             `Erro ao registrar ${categoria}: ${erroDocumento.message}`
           );
         }
+        if (documentoNovo) { const aviso = await dispararExtracao(supabase, documentoNovo.id, categoria); if (aviso) avisosLeitura.push(aviso); }
         }
       }
 
@@ -258,7 +271,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
         data: dataAutorizacao,
       });
 
-      setMensagem("Autorização cadastrada com sucesso.");
+      setMensagem("Autorização cadastrada com sucesso. " + [...new Set(avisosLeitura)].join(" "));
     } catch (error) {
       const erroSupabase =
         error && typeof error === "object"
@@ -371,6 +384,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
                     setErro("");
                     setCpf("");
                     setNumero("");
+                    setCrm(""); setCrmUf("");
                     setArquivos({
                       documento_cliente: null,
                       receita_medica: null,
@@ -482,6 +496,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
                       setResumo(null);
                       setCpf("");
                       setNumero("");
+                    setCrm(""); setCrmUf("");
                       setArquivos({
                         documento_cliente: null,
                         receita_medica: null,
@@ -529,6 +544,11 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
                 required
                 className="rbk-input"
               />
+            </div>
+
+            <div>
+              <CamposCrm prefixo="cadastro-crm" crm={crm} uf={crmUf} onChange={(numero, uf) => { setCrm(numero); setCrmUf(uf); }} />
+              <p className="mt-2 text-xs text-gray-500">Informe o CRM e a UF conforme a receita para localizar esta autorização nos relatórios.</p>
             </div>
 
             <div className="border-t border-gray-200 pt-7">

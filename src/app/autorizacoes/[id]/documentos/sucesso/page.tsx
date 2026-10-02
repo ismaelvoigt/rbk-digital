@@ -1,5 +1,6 @@
 "use client";
 
+import { useNavegacaoPerfil } from "../../../../../lib/auth/useNavegacaoPerfil";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -27,6 +28,7 @@ function formatarNumeroAutorizacao(valor: string) {
 }
 
 export default function DocumentoSucesso() {
+  const navegacao = useNavegacaoPerfil();
   const params = useParams();
   const id = params.id as string;
   const supabase = createClient();
@@ -70,7 +72,7 @@ export default function DocumentoSucesso() {
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <Link href="/nova-autorizacao" className="rbk-primary rounded-[13px] px-6 py-4 text-center text-sm font-bold">Cadastrar nova autorização</Link>
-          <Link href="/farmacia" className="rbk-secondary rounded-[13px] px-6 py-4 text-center text-sm font-bold">Voltar para o início</Link>
+          {navegacao && <Link href={navegacao.href} className="rbk-secondary rounded-[13px] px-6 py-4 text-center text-sm font-bold">{navegacao.label}</Link>}
         </div>
       </div>
     </main>

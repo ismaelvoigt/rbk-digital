@@ -1,10 +1,12 @@
 export type RbkRole =
+  | "gerente_farmacia"
   | "operador"
   | "administrador_farmacia"
   | "gestor_rbk"
   | "superadmin_rbk";
 
 const ROLES: readonly string[] = [
+  "gerente_farmacia",
   "operador",
   "administrador_farmacia",
   "gestor_rbk",

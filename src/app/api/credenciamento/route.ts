@@ -1,3 +1,4 @@
+import { dispatchInvitation, deliveryHistory, unavailableDelivery } from "../../../lib/convites/server";
 import { assertStaging, validateOrigin, body, newToken, tokenHash, managerClient, PortalError, failure, response } from '../../../lib/auditoria/server';
 import { createAdminClient } from '../../../lib/supabase/admin';
 import { validateFicha } from '../../../lib/processos/domain';
@@ -17,21 +18,33 @@ export async function POST(req:Request){try{
   if(op==='save'){const missing=missingFichaFields(ficha,b.partners??1);if(missing.length)throw new PortalError(400,'Preencha os campos obrigatórios antes de salvar: '+missing.join(', ')+'.');}
   Object.assign(payload,{ficha,filial:b.filial,partners:b.partners??1,revision:b.revision});
  }
+ if(op==='create'){payload.check_duplicate=true;payload.confirm_duplicate=b.confirm_duplicate===true;}
  if(op==='renew'||op==='create'){token=newToken();payload.hash=tokenHash(token);}
  if(op==='init'){
   const f=b.file;const types:Record<string,string>={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg'};
   const ext=typeof f?.name==='string'?f.name.split('.').pop()?.toLowerCase():'';
-  if(!f||!ext||!types[ext]||f.mime!==types[ext]||f.name.length>180||/[\x00-\x1f/\\]/.test(f.name)||!Number.isInteger(f.size)||f.size<1||f.size>26214400||!Number.isInteger(f.kind)||f.kind<0||f.kind>9||!/^[-0-9a-f]{36}$/.test(f.id)||!/^[a-f0-9]{64}$/.test(f.fingerprint))throw new PortalError(400,'Arquivo inválido. Use PDF, JPG ou PNG até 25 MB.');
+  if(!f||!ext||!types[ext]||f.mime!==types[ext]||f.name.length>180||/[\x00-\x1f/\\]/.test(f.name)||!Number.isInteger(f.size)||f.size<1||f.size>26214400||!Number.isInteger(f.kind)||f.kind<0||f.kind>10||!/^[-0-9a-f]{36}$/.test(f.id)||!/^[a-f0-9]{64}$/.test(f.fingerprint))throw new PortalError(400,'Arquivo inválido. Use PDF, JPG ou PNG até 25 MB.');
   Object.assign(payload,f);
  }
  if(op==='confirm'||op==='file')payload.id=b.fileId;
  const admin=createAdminClient();const {data,error}=await admin.rpc('cre_command',{op,actor,h,pid:actor?b.id||null:null,payload});
  if(error)throw new PortalError(409,op==='save'?'Não foi possível salvar. Atualize a ficha e confira os dados.':'Acesso ou operação indisponível. Confira o link e tente novamente.');
+ if(data?.confirmation_required)return response(data);
  if(op==='init'){
   if(data.received_at)return response({id:data.id,received:true});
   const signed=await admin.storage.from('credenciamento-private').createSignedUploadUrl(data.storage_path,{upsert:false});if(signed.error)throw new PortalError(503,'Não foi possível iniciar o envio.');
   return response({id:data.id,url:signed.data.signedUrl,path:data.storage_path});
  }
  if(op==='file'){const signed=await admin.storage.from('credenciamento-private').createSignedUrl(data.storage_path,60,{download:data.filename});if(signed.error)throw new PortalError(503,'Download indisponível.');return response({url:signed.data.signedUrl});}
- return response(token?{...data,link:new URL('/portal/credenciamento',req.url).origin+'/portal/credenciamento#'+token}:data);
+ if(token){
+  const link=new URL('/portal/credenciamento',req.url).origin+'/portal/credenciamento#'+token;
+  let delivery=unavailableDelivery();
+  try {
+   const ficha=(op==='create'?payload.ficha:data.ficha) as Record<string,string>;
+   delivery=await dispatchInvitation({kind:'credenciamento',id:data.id,name:ficha.B21||'',email:ficha.B32||'',phone:ficha.B33||'',link});
+  } catch { /* Preserve the committed invitation even if notification setup fails. */ }
+  return response({...data,link,delivery});
+ }
+ if(op==='get'&&actor)return response({...data,deliveries:await deliveryHistory('credenciamento',data.id)});
+ return response(data);
 }catch(e){return failure(e);}}

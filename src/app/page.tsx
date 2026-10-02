@@ -3,63 +3,24 @@
 import { FormEvent, useState } from "react";
 
 import { createClient } from "../lib/supabase/client";
-import { RbkBrand } from "../components/RbkBrand";
+import Link from "next/link";
+import { setSessionPersistence } from "../lib/auth/sessionPersistence";
 import { getRouteForPerfil } from "../lib/auth/routeForPerfil";
 
 export default function Home() {
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
-  const [enviandoRecuperacao, setEnviandoRecuperacao] = useState(false);
-  const [mensagem, setMensagem] = useState("");
 
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
-  async function recuperarSenha() {
-    setMensagem("");
-    setErro("");
-
-    const emailRecuperacao = email.trim();
-
-    if (!emailRecuperacao) {
-      setMensagem("Informe seu e-mail para receber o link de recuperação.");
-      return;
-    }
-
-    setEnviandoRecuperacao(true);
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        emailRecuperacao,
-        {
-          redirectTo: `${window.location.origin}/redefinir-senha`,
-        }
-      );
-
-      if (error) {
-        setMensagem(error.message);
-        return;
-      }
-
-      setMensagem(
-        "Link de recuperação enviado! Verifique seu e-mail para continuar."
-      );
-    } catch {
-      setMensagem(
-        "Não foi possível enviar o link de recuperação. Tente novamente."
-      );
-    } finally {
-      setEnviandoRecuperacao(false);
-    }
-  }
-
-
   async function entrar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErro("");
     setCarregando(true);
 
+    setSessionPersistence(null);
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password: senha,
@@ -123,6 +84,7 @@ export default function Home() {
       return;
     }
 
+    setSessionPersistence(usuario.perfil);
     window.location.href = rota;
   }
 
@@ -242,28 +204,7 @@ return (
             <div className="h-px flex-1 bg-slate-200" />
           </div>
 
-          <button
-            id="recuperar-senha"
-            type="button"
-            className="mx-auto flex items-center justify-center gap-3 text-base font-medium text-slate-700 transition hover:text-red-600"
-           onClick={recuperarSenha} disabled={enviandoRecuperacao}>
-            <span className="text-red-600" aria-hidden="true">
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <rect x="5" y="10" width="14" height="10" rx="2" />
-                <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                <path d="M12 14v2" />
-              </svg>
-            </span>
-            Esqueci minha senha
-          </button>
-          {mensagem && (
-            <p
-              className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm leading-5 text-red-700"
-              aria-live="polite"
-            >
-              {mensagem}
-            </p>
-          )}
+          <Link href="/esqueci-minha-senha" id="recuperar-senha" className="mx-auto flex items-center justify-center text-base font-medium text-slate-700 transition hover:text-red-600">Esqueci minha senha</Link>
 
         </section>
 

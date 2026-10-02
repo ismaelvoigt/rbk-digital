@@ -1,3 +1,4 @@
+import { dispatchInvitation, deliveryHistory, unavailableDelivery } from "../../../../lib/convites/server";
 import {
   body,
   validateFiles,
@@ -72,6 +73,7 @@ async function handle(
       (req.method === "GET" && action)
     )
       throw new PortalError(404, "Rota indisponível.");
+    if (op === "create") { input.check_duplicate = true; input.confirm_duplicate = input.confirm_duplicate === true; }
     if (op === "office_begin") validateFiles([input.file], true);
     let token: string | undefined;
     if (op === "link" || op === "confirm") {
@@ -112,14 +114,21 @@ async function handle(
       if (se) throw new PortalError(403, "Download não autorizado.");
       return response({ url: signed?.signedUrl });
     }
-    return response(
-      token && (op !== "confirm" || data.created)
-        ? {
-            ...data,
-            url: `${new URL(req.url).origin}/portal/auditoria#${token}`,
-          }
-        : data,
-    );
+    if (token && (op !== "confirm" || data.created)) {
+      const url = `${new URL(req.url).origin}/portal/auditoria#${token}`;
+      let delivery = unavailableDelivery();
+      try {
+        const detail = await client.rpc("aud_manager", {op:"detail",aid:id,payload:{}});
+        if (!detail.error && detail.data?.audit) {
+          const a = detail.data.audit;
+          delivery = await dispatchInvitation({kind:"auditoria",id,name:a.pharmacy,
+            email:a.contact_email || "",phone:a.contact_phone || "",link:url});
+        }
+      } catch { /* The invitation is already committed; preserve its link. */ }
+      return response({...data,url,delivery});
+    }
+    if (op === "detail") return response({...data,deliveries:await deliveryHistory("auditoria",id)});
+    return response(data);
   } catch (e) {
     return failure(e);
   }

@@ -17,3 +17,11 @@ describe("navegação das rotas compartilhadas por perfil", () => {
     });
   });
 });
+
+import { getNavegacaoPorRole } from '../src/lib/auth/navegacaoPerfil';
+it.each(['gestor_rbk', 'superadmin_rbk'])('shared screens return %s to dashboard', perfil => {
+  expect(getNavegacaoPorRole(perfil, perfil === 'superadmin_rbk').href).toBe('/dashboard');
+});
+it.each(['farmacia', 'operador', 'administrador_farmacia'])('keeps %s in the pharmacy area', perfil => {
+  expect(getNavegacaoPorRole(perfil, false).href).toBe('/farmacia');
+});

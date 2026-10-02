@@ -13,23 +13,24 @@ export class PortalError extends Error {
 export function assertStaging(
   env: Record<string, string | undefined> = process.env,
 ) {
-  const ref = env.AUDIT_STAGING_PROJECT_REF;
+  const production = env.VERCEL_ENV === "production";
+  const ref = production ? env.AUDIT_PRODUCTION_PROJECT_REF : env.AUDIT_STAGING_PROJECT_REF;
   let url: URL;
   try {
     url = new URL(env.NEXT_PUBLIC_SUPABASE_URL || "");
   } catch {
-    throw new PortalError(503, "Homologação ainda não configurada.");
+    throw new PortalError(503, "Portal ainda não configurado.");
   }
   if (
     env.AUDIT_PORTAL_ENABLED !== "true" ||
-    env.VERCEL_ENV === "production" ||
+    (production && env.AUDIT_PRODUCTION_ENABLED !== "true") ||
     !ref ||
-    ref === "sqamrlckyuesfmibxizy" ||
+    (!production && ref === "sqamrlckyuesfmibxizy") ||
     url.origin !== `https://${ref}.supabase.co`
   )
     throw new PortalError(
       503,
-      "Portal restrito ao ambiente de homologação validado.",
+      "Portal indisponível neste ambiente.",
     );
   return ref;
 }

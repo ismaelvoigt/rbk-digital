@@ -16,7 +16,7 @@ describe("PFPB — regras conservadoras", () => {
   });
   it("ausência nunca solicita substituição automaticamente", () => {
     const a = analyze([], {}, "2026-09-18");
-    expect(a.documents).toHaveLength(11);
+    expect(a.documents).toHaveLength(12);
     expect(a.documents.every((x) => x.result === "Requer conferência")).toBe(
       true,
     );

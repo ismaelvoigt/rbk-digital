@@ -1,0 +1,12 @@
+# Gestão comercial e financeira RBK
+Escopo autorizado: acrescentar Financeiro e CRM, preservando integralmente o painel, links e fluxos existentes.
+
+Nova seção Gestão da RBK após Resumo da carteira; rotas /financeiro e /crm com retorno ao dashboard. Mesmos componentes, cores e espaçamentos do produto. Nenhum envio externo nem gateway ativado.
+
+CRM: cadastro único por CNPJ normalizado, CNPJ opcional enquanto lead; vínculo automático com farms somente se autorizado e correspondente. Conversão para Cliente reutiliza o cadastro comercial; contratação aponta para esse cadastro. Cadastro de acesso à farmácia continua no fluxo atual. Campos e filtros conforme pedido; flag aguardando_credenciamento independente do status, referência de oportunidade para uso futuro. Comunicados são rascunhos de assunto, texto, canal e segmentação, sem envio.
+
+Financeiro: contrato com serviço, cliente, CNPJ via cliente, valor, forma, contratação, primeiro vencimento, notas; RBK Digital inclui plano, início, dia, status. Lançamentos mensais separados, únicos por contrato/competência. Gerar mensalidades vencidas e corrente sob demanda, idempotentemente. Dia 29/30/31 ajustado ao último dia do mês. Histórico não é reescrito por edição do contrato. Pagamentos manuais parciais ou totais, nunca superiores ao saldo, sem duplicação em repetição da mesma requisição. Cancelamento mantém débitos vencidos e pagamentos e cancela parcelas futuras em aberto. MRR soma apenas assinaturas ativas já iniciadas. Recebido no mês usa data do pagamento; a receber inclui atrasados; inadimplência usa saldo vencido.
+
+Segurança: tabelas novas com RLS e acesso somente por funções autenticadas verificadas; contas de farmácia bloqueadas. Superadministrador confirmado em rbk_admins, gestor limitado às farmácias atribuídas ou seus leads não vinculados. Não autorizar por user_metadata. Dados, autor, timestamps e eventos de alteração persistidos. Concorrência por updated_at e bloqueio de linha em pagamentos. CNPJ/farm_id imutáveis após vínculo/contrato para evitar troca de cliente.
+
+Validação: testes reais PostgreSQL local de isolamento, cadastro/edição/filtros/conversão, recorrência, pagamentos, métricas; testes de renderização/navegação, suíte existente, TypeScript, build e verificação visual. Reconciliar alterações recentes antes de publicar pelo processo Vercel existente. Aplicar migração aditiva apenas após testes locais; validar produção sem misturar registros de teste com clientes reais.

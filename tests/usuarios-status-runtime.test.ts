@@ -1,3 +1,5 @@
+import { normalizeTelefone } from "../src/lib/cadastro/telefone";
+import { normalizeCnpj } from "../src/lib/auditoria/cnpj";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
@@ -30,6 +32,8 @@ function carregarPatch() {
       if (name === "next/server") return { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } };
       if (name === "@supabase/supabase-js") return { createClient: () => ({ auth: { getUser: async () => ({ data: { user: { id: "admin-teste" } }, error: null }) } }) };
       if (name.endsWith("/supabase/admin")) return { createAdminClient: () => admin };
+      if (name.endsWith("/cadastro/telefone")) return { normalizeTelefone };
+      if (name.endsWith("/auditoria/cnpj")) return { normalizeCnpj };
       throw new Error(`Dependência inesperada: ${name}`);
     },
   });
@@ -63,4 +67,15 @@ describe("PATCH de status — execução isolada sem banco real", () => {
     expect(await response.json()).toEqual({ error: "A Razão Social é obrigatória." });
     expect(updates).toEqual([]);
   });
+});
+
+it('PATCH recusa telefone longo sem alterar registros', async () => {
+  const { patch, updates } = carregarPatch();
+  const response = await patch(new Request('http://localhost/api/usuarios', {
+    method: 'PATCH', headers: { Authorization: 'Bearer token-simulado' },
+    body: JSON.stringify({ id: 'usuario-teste', razao_social: 'Farmácia', email: 'teste@example.invalid', telefone: '11999998888123' }),
+  }));
+  expect(response.status).toBe(400);
+  expect((await response.json()).error).toContain('telefone');
+  expect(updates).toEqual([]);
 });

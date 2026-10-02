@@ -1,0 +1,21 @@
+'use client';
+import Link from 'next/link';
+import {useEffect,useState,type ReactNode,type InputHTMLAttributes} from 'react';
+import {RbkBrand} from '../RbkBrand';
+import {GestorLogout} from '../GestorNavigation';
+import {gestao,mensagem} from '../../lib/gestao/client';
+import type {Contexto} from '../../lib/gestao/types';
+export const inputClass='mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 disabled:bg-gray-100 focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600';
+export const buttonClass='rounded-xl bg-red-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-800 disabled:opacity-50';
+export const secondaryClass='rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50';
+export const panelClass='rounded-[22px] border border-gray-200 bg-white p-5 shadow-sm sm:p-6';
+export function Field({label,...props}:InputHTMLAttributes<HTMLInputElement>&{label:string}){return <label className="block text-sm font-semibold text-gray-700">{label}<input {...props} className={inputClass}/></label>;}
+export function Select({label,name,value,defaultValue,options,onChange,required=false,disabled=false}:{label:string;name:string;value?:string;defaultValue?:string;options:(string|{value:string;label:string})[];onChange?:(value:string)=>void;required?:boolean;disabled?:boolean}){return <label className="block text-sm font-semibold text-gray-700">{label}<select name={name} value={value} defaultValue={defaultValue} required={required} disabled={disabled} onChange={onChange?e=>onChange(e.target.value):undefined} className={inputClass}>{options.map(o=>typeof o==='string'?<option key={o} value={o}>{o}</option>:<option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;}
+export function TextArea({label,name,value}:{label:string;name:string;value?:string}){return <label className="block text-sm font-semibold text-gray-700">{label}<textarea name={name} defaultValue={value} maxLength={10000} rows={3} className={inputClass}/></label>;}
+export function Badge({children}:{children:ReactNode}){return <span className="inline-block rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-800">{children}</span>;}
+export function Pager({total,offset,onChange}:{total:number;offset:number;onChange:(n:number)=>void}){return <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500"><span>{total===0?'Nenhum registro':`${offset+1}–${Math.min(offset+100,total)} de ${total}`}</span><div className="flex gap-2"><button className={secondaryClass} disabled={!offset} onClick={()=>onChange(Math.max(0,offset-100))}>Anterior</button><button className={secondaryClass} disabled={offset+100>=total} onClick={()=>onChange(offset+100)}>Próxima</button></div></div>;}
+export function GestaoShell({title,description,children}:{title:string;description:string;children:(ctx:Contexto)=>ReactNode}){
+ const [ctx,setCtx]=useState<Contexto|null>(null),[error,setError]=useState('');
+ useEffect(()=>{let live=true;gestao<Contexto>('contexto').then(x=>{if(live)setCtx(x);}).catch(e=>{if(live)setError(mensagem(e));});return()=>{live=false;};},[]);
+ return <main className="min-h-screen bg-[#f6f7f8]"><header className="border-b border-gray-200 bg-white"><div className="mx-auto flex min-h-24 max-w-[1320px] items-center justify-between gap-4 px-6"><RbkBrand compact/><GestorLogout/></div></header><div className="mx-auto max-w-[1320px] px-4 py-8 sm:px-6"><Link className="text-sm font-bold text-red-700" href="/dashboard">← Voltar ao Dashboard</Link><div className="my-6"><p className="text-xs font-bold uppercase tracking-[0.16em] text-red-600">Gestão da RBK</p><h1 className="mt-2 text-3xl font-bold text-gray-900">{title}</h1><p className="mt-2 text-gray-500">{description}</p></div><nav aria-label="Gestão da RBK" className="mb-6 flex gap-3"><Link href="/financeiro" className={title==='Financeiro'?buttonClass:secondaryClass}>Financeiro</Link><Link href="/crm" className={title==='CRM'?buttonClass:secondaryClass}>CRM</Link></nav>{error?<p role="alert" className={panelClass}>{error}</p>:ctx?children(ctx):<p role="status">Verificando acesso…</p>}</div></main>;
+}

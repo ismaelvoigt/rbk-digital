@@ -18,7 +18,7 @@ create function pfpb_private.can_access(pid uuid) returns boolean language sql s
 $$;
 create table public.pfpb_versions (
  id uuid primary key, process_id uuid not null references public.pfpb_processes(id), kind text not null
- check(kind in ('cnpj','contrato_social','endereco','licenca_sanitaria','afe','cnd','crt','representante','rt','banco','rta')),
+ check(kind in ('cnpj','contrato_social','endereco','licenca_sanitaria','afe','cnd','crt','representante','residencial','rt','banco','rta')),
  storage_path text not null unique, filename text not null, size integer not null check(size between 1 and 20971520),
  uploaded_by uuid not null references auth.users(id), created_at timestamptz not null default clock_timestamp()
 );
@@ -89,7 +89,7 @@ begin
   if (payload->>'revision')::integer is distinct from p.revision or payload->>'confirmed' is distinct from 'true' then raise exception 'Conferência da ficha e versão necessárias';end if;
   select count(*) into total from (select distinct on(kind) id,kind from public.pfpb_versions where process_id=pid order by kind,created_at desc) latest
   where (select decision from public.pfpb_reviews where version_id=latest.id order by created_at desc limit 1)='Aprovado';
-  if total<>11 then raise exception 'Aprove as onze categorias na versão atual';end if;
+  if total<>12 then raise exception 'Aprove as doze categorias na versão atual';end if;
   update public.pfpb_processes set formed_revision=revision,updated_at=now() where id=pid returning * into p;
   insert into public.pfpb_events(process_id,action,actor_id,detail) values(pid,'Processo formado após conferência humana',auth.uid(),jsonb_build_object('revision',p.revision));
  else raise exception 'Operação desconhecida';end if;

@@ -1,19 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { formatTelefone } from "../../../lib/cadastro/telefone";
+import { formatCnpj, normalizeCnpj } from "../../../lib/auditoria/cnpj";
 import { FormEvent, useState } from "react";
 import { createClient } from "../../../lib/supabase/client";
 import { RbkBrand } from "../../../components/RbkBrand";
 
-function formatarCnpj(valor: string) {
-  const numeros = valor.replace(/\D/g, "").slice(0, 14);
-
-  return numeros
-    .replace(/^(\d{2})(\d)/, "$1.$2")
-    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1/$2")
-    .replace(/(\d{4})(\d)/, "$1-$2");
-}
 
 export default function NovaFarmaciaPage() {
   const supabase = createClient();
@@ -29,6 +22,7 @@ export default function NovaFarmaciaPage() {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState(false);
+  const [mensagemSucesso, setMensagemSucesso] = useState("");
 
   async function cadastrarFarmacia(
     event: FormEvent<HTMLFormElement>
@@ -58,7 +52,7 @@ export default function NovaFarmaciaPage() {
         body: JSON.stringify({
           razao_social: razaoSocial.trim(),
           nome_fantasia: nomeFantasia.trim(),
-          cnpj: cnpj.replace(/\D/g, ""),
+          cnpj: normalizeCnpj(cnpj),
           email: email.trim(),
           telefone: telefone.trim(),
           cidade: cidade.trim(),
@@ -76,6 +70,7 @@ export default function NovaFarmaciaPage() {
         return;
       }
 
+      setMensagemSucesso(resultado.mensagem || "Farmácia cadastrada com sucesso.");
       setSucesso(true);
 
       setRazaoSocial("");
@@ -134,13 +129,10 @@ export default function NovaFarmaciaPage() {
           {sucesso && (
             <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-4 py-4 text-sm leading-6 text-green-800">
               <p className="font-bold">
-                Farmácia cadastrada com sucesso.
+                {mensagemSucesso}
               </p>
 
-              <p className="mt-1">
-                O convite de acesso foi enviado para o
-                e-mail informado.
-              </p>
+
             </div>
           )}
 
@@ -219,10 +211,10 @@ export default function NovaFarmaciaPage() {
               <input
                 id="cnpj"
                 type="text"
-                inputMode="numeric"
+                autoCapitalize="characters"
                 value={cnpj}
                 onChange={(event) =>
-                  setCnpj(formatarCnpj(event.target.value))
+                  setCnpj(formatCnpj(event.target.value))
                 }
                 placeholder="00.000.000/0000-00"
                 required
@@ -240,9 +232,15 @@ export default function NovaFarmaciaPage() {
               </label>
               <input
                 id="telefone"
+                maxLength={15}
+                inputMode="tel"
+                autoComplete="tel-national"
+                placeholder="(11) 99999-9999"
+                pattern={"\\([1-9]{2}\\) [0-9]{4,5}-[0-9]{4}"}
+                title="Informe o telefone com DDD: (11) 3333-4444 ou (11) 99999-9999."
                 type="tel"
                 value={telefone}
-                onChange={(event) => setTelefone(event.target.value)}
+                onChange={(event) => setTelefone(formatTelefone(event.target.value))}
                 disabled={enviando}
                 className="rbk-input"
               />

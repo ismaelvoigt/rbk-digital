@@ -6,7 +6,7 @@ create table public.cre_processes (
  rate_minute timestamptz, rate_count int not null default 0
 );
 create table public.cre_files (
- id uuid primary key, process_id uuid not null references public.cre_processes(id), kind int not null check(kind between 0 and 9),
+ id uuid primary key, process_id uuid not null references public.cre_processes(id), kind int not null check(kind between 0 and 10),
  filename text not null, mime text not null check(mime in ('application/pdf','image/png','image/jpeg')),
  size bigint not null check(size between 1 and 26214400), fingerprint text not null check(fingerprint ~ '^[a-f0-9]{64}$'),
  storage_path text unique not null, created_at timestamptz not null default now(), received_at timestamptz,

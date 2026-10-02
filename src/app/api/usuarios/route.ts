@@ -1,5 +1,7 @@
+import { normalizeTelefone } from "../../../lib/cadastro/telefone";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { normalizeCnpj } from "../../../lib/auditoria/cnpj";
 import { createAdminClient } from "../../../lib/supabase/admin";
 
 
@@ -74,8 +76,7 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const cnpj = (searchParams.get("cnpj") ?? "")
-      .replace(/\D/g, "");
+    const cnpj = normalizeCnpj(searchParams.get("cnpj") ?? "");
     const id = (searchParams.get("id") ?? "").trim();
 
     let query = admin
@@ -89,7 +90,7 @@ export async function GET(request: Request) {
         status,
         created_at,
         last_access_at,
-        farms (
+        farms!users_farm_id_fkey (
           razao_social,
           nome_fantasia,
           cnpj,
@@ -120,7 +121,10 @@ export async function GET(request: Request) {
       );
     }
 
-    const usuarios = (data ?? []).filter((usuario) => {
+    const acessos = await admin.rpc("usuarios_acessos", { p_actor: user.id });
+    if (acessos.error) return NextResponse.json({ error: "Não foi possível verificar os últimos acessos." }, { status: 503 });
+    const porUsuario = new Map<string, string | null>((acessos.data ?? []).map((acesso: { user_id: string; last_access_at: string | null }) => [acesso.user_id, acesso.last_access_at]));
+    const usuarios = (data ?? []).map((usuario) => ({ ...usuario, last_access_at: porUsuario.get(usuario.id) ?? usuario.last_access_at })).filter((usuario) => {
       if (!cnpj) return true;
 
       const farm = Array.isArray(usuario.farms)
@@ -129,7 +133,7 @@ export async function GET(request: Request) {
 
       return (
         typeof farm?.cnpj === "string" &&
-        farm.cnpj.replace(/\D/g, "") === cnpj
+        normalizeCnpj(farm.cnpj) === cnpj
       );
     });
 
@@ -238,18 +242,20 @@ export async function POST(request: Request) {
       body.nome_fantasia ?? ""
     ).trim();
 
-    const cnpj = String(
-      body.cnpj ?? ""
-    ).replace(/\D/g, "");
+    const cnpj = normalizeCnpj(String(body.cnpj ?? ""));
 
     const email = String(
       body.email ?? ""
     ).trim()
       .toLowerCase();
 
-    const telefone = String(
-      body.telefone ?? ""
-    ).trim();
+    const telefone = normalizeTelefone(String(body.telefone ?? ""));
+    if (telefone === null) {
+      return NextResponse.json(
+        { error: "Informe um telefone com DDD e 10 ou 11 dígitos: (11) 3333-4444 ou (11) 99999-9999." },
+        { status: 400 }
+      );
+    }
 
     const cidade = String(
       body.cidade ?? ""
@@ -270,51 +276,30 @@ export async function POST(request: Request) {
       );
     }
 
-    if (cnpj.length !== 14) {
+    if (!/^[A-Z0-9]{12}[0-9]{2}$/.test(cnpj)) {
       return NextResponse.json(
         {
-          error: "O CNPJ deve conter 14 dígitos.",
+          error: "O CNPJ deve conter 14 caracteres, com os dois últimos numéricos.",
         },
         { status: 400 }
       );
     }
 
-    /*
-     * 3. Verifica se o CNPJ já está cadastrado.
-     */
-    const {
-      data: farmExistente,
-      error: farmBuscaError,
-    } = await admin
-      .from("farms")
-      .select("id, razao_social")
-      .eq("cnpj", cnpj)
-      .maybeSingle();
-
-    if (farmBuscaError) {
-      console.error(
-        "Erro ao verificar CNPJ:",
-        farmBuscaError
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            "Não foi possível verificar o CNPJ.",
-        },
-        { status: 500 }
-      );
-    }
-
-    if (farmExistente) {
-      return NextResponse.json(
-        {
-          error:
-            "Já existe uma farmácia cadastrada com este CNPJ.",
-        },
-        { status: 409 }
-      );
-    }
+    // Resolve the master record by normalized CNPJ. Processes keep their own IDs.
+    const farmPayload = { razao_social: razaoSocial, nome_fantasia: nomeFantasia,
+      cnpj, telefone, cidade, estado };
+    const lookup = await admin.rpc("cadastro_farmacia_cnpj", {
+      p_actor: user.id, payload: farmPayload, p_create: false,
+    });
+    if (lookup.error) return NextResponse.json(
+      { error: "Não foi possível verificar o cadastro da farmácia." }, { status: 503 });
+    const farmExistente = lookup.data?.farm;
+    const resolveFarm = async () => {
+      const result = await admin.rpc("cadastro_farmacia_cnpj", {
+        p_actor: user.id, payload: farmPayload, p_create: true,
+      });
+      return { data: result.data?.farm, error: result.error };
+    };
 
     /*
      * 4. Procura o e-mail no Supabase Auth.
@@ -411,6 +396,11 @@ export async function POST(request: Request) {
        * Se já existe registro em users, esse acesso já
        * pertence a alguma estrutura do RBK Digital.
        */
+      if (usuarioExistente?.perfil === "farmacia" && farmExistente && usuarioExistente.farm_id === farmExistente.id) {
+        return NextResponse.json({ success: true, tipo_acesso: "existente",
+          mensagem: "Esta farmácia e este acesso já estão cadastrados. Você pode criar novos processos para o mesmo CNPJ.",
+          farm: farmExistente, usuario: usuarioExistente }, { status: 200 });
+      }
       if (usuarioExistente) {
         return NextResponse.json(
           {
@@ -432,21 +422,7 @@ export async function POST(request: Request) {
       const {
         data: farm,
         error: farmError,
-      } = await admin
-        .from("farms")
-        .insert({
-          telefone: telefone || null,
-          cidade: cidade || null,
-          estado: estado || null,
-          razao_social: razaoSocial,
-          nome_fantasia: nomeFantasia || null,
-          cnpj,
-          status: "active",
-        })
-        .select(
-          "id, razao_social, nome_fantasia, cnpj, status, created_at"
-        )
-        .single();
+      } = await resolveFarm();
 
       if (farmError || !farm) {
         console.error(
@@ -487,15 +463,10 @@ export async function POST(request: Request) {
           usuarioError
         );
 
-        await admin
-          .from("farms")
-          .delete()
-          .eq("id", farm.id);
-
         return NextResponse.json(
           {
             error:
-              "A farmácia foi criada, mas não foi possível vincular o acesso existente.",
+              "Não foi possível vincular o acesso. O cadastro da farmácia foi preservado.",
           },
           { status: 500 }
         );
@@ -514,6 +485,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Verify SMTP and load the guide before creating a new account.
+    const { preparePharmacyInvitation } = await import("../../../lib/cadastro/invitation");
+    let sendInvitation: Awaited<ReturnType<typeof preparePharmacyInvitation>>;
+    try {
+      sendInvitation = await preparePharmacyInvitation();
+    } catch {
+      return NextResponse.json(
+        { error: "O envio de convites está indisponível. Nenhum cadastro foi criado. Tente novamente mais tarde." },
+        { status: 503 }
+      );
+    }
+
     /*
      * 7. E-mail novo:
      * cria a farmácia primeiro.
@@ -521,21 +504,7 @@ export async function POST(request: Request) {
     const {
       data: farm,
       error: farmError,
-    } = await admin
-      .from("farms")
-      .insert({
-        telefone: telefone || null,
-        cidade: cidade || null,
-        estado: estado || null,
-        razao_social: razaoSocial,
-        nome_fantasia: nomeFantasia || null,
-        cnpj,
-        status: "active",
-      })
-      .select(
-        "id, razao_social, nome_fantasia, cnpj, status, created_at"
-      )
-      .single();
+    } = await resolveFarm();
 
     if (farmError || !farm) {
       console.error(
@@ -553,30 +522,27 @@ export async function POST(request: Request) {
     }
 
     /*
-     * 8. Envia o convite para um e-mail novo.
+     * 8. Gera o link seguro sem enviar o e-mail padrão do Supabase.
      */
     const {
       data: convite,
       error: conviteError,
-    } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: "https://rbk-digital.vercel.app/redefinir-senha",
+    } = await admin.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: { redirectTo: "https://rbk-digital.vercel.app/primeiro-acesso" },
     });
 
-    if (conviteError || !convite.user) {
+    if (conviteError || !convite.user || !convite.properties?.hashed_token) {
       console.error(
         "Erro ao enviar convite:",
         conviteError
       );
 
-      await admin
-        .from("farms")
-        .delete()
-        .eq("id", farm.id);
-
       return NextResponse.json(
         {
           error:
-            "Não foi possível enviar o convite de acesso. A farmácia não foi cadastrada.",
+            "Não foi possível enviar o convite de acesso. O cadastro da farmácia foi preservado.",
         },
         { status: 400 }
       );
@@ -613,17 +579,28 @@ export async function POST(request: Request) {
         convite.user.id
       );
 
-      await admin
-        .from("farms")
-        .delete()
-        .eq("id", farm.id);
-
       return NextResponse.json(
         {
           error:
             "Não foi possível concluir o cadastro do usuário.",
         },
         { status: 500 }
+      );
+    }
+
+    // Send only once the pharmacy and its access record are both persisted.
+    try {
+      const primeiroAcesso = new URL("https://rbk-digital.vercel.app/primeiro-acesso");
+      primeiroAcesso.searchParams.set("type", "invite");
+      primeiroAcesso.searchParams.set("token_hash", convite.properties.hashed_token);
+      await sendInvitation(email, nomeFantasia || razaoSocial, primeiroAcesso.toString());
+    } catch {
+      // Keep failed registrations retryable, as in the previous invite flow.
+      await admin.from("users").delete().eq("id", convite.user.id);
+      await admin.auth.admin.deleteUser(convite.user.id);
+      return NextResponse.json(
+        { error: "Não foi possível enviar o convite com o guia. O cadastro da farmácia foi preservado. Tente novamente mais tarde." },
+        { status: 502 }
       );
     }
 
@@ -894,9 +871,13 @@ export async function PATCH(request: Request) {
       body.email ?? ""
     ).trim().toLowerCase();
 
-    const telefone = String(
-      body.telefone ?? ""
-    ).trim();
+    const telefone = normalizeTelefone(String(body.telefone ?? ""));
+    if (telefone === null) {
+      return NextResponse.json(
+        { error: "Informe um telefone com DDD e 10 ou 11 dígitos: (11) 3333-4444 ou (11) 99999-9999." },
+        { status: 400 }
+      );
+    }
 
     const cidade = String(
       body.cidade ?? body.cidade ?? ""

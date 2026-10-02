@@ -6,6 +6,7 @@ export function getRouteForPerfil(perfil: string): string {
       return "/dashboard";
 
     case "farmacia":
+    case "gerente_farmacia":
     case "operador":
     case "administrador_farmacia":
       return "/farmacia";

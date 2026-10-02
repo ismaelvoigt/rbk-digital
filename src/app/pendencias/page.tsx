@@ -34,7 +34,7 @@ export default function PendenciasPage() {
         .eq("id", user.id)
         .single();
       if (profileError || !profile?.farm_id || profile.status !== "active" ||
-        !["farmacia", "operador", "administrador_farmacia"].includes(profile.perfil)) {
+        !["farmacia", "operador", "administrador_farmacia", "gerente_farmacia"].includes(profile.perfil)) {
         if (active) {
           setError("Seu perfil não está vinculado a uma farmácia ativa.");
           setLoading(false);

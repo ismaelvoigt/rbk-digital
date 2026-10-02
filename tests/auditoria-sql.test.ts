@@ -51,13 +51,7 @@ beforeAll(async () => {
  update public.users set perfil='farmacia',farm_id='${id(10)}' where id='${id(3)}';
  insert into public.rbk_admins values('${id(4)}',true);
  insert into public.farms values('${id(10)}','Farmácia Sintética A','12345678000190','active'),('${id(11)}','Farmácia Sintética B','98765432000190','active');`);
-  const base = readFileSync(
-    "supabase/migrations/20260918152400_rbac_auditoria_base.sql",
-    "utf8",
-  );
-  await db.exec(
-    base.slice(0, base.indexOf("alter table public.autorizacoes")) + "commit;",
-  );
+  await db.exec(readFileSync("supabase/convites-production-base.sql", "utf8"));
   await db.exec(
     `insert into public.rbk_manager_farms(manager_user_id,farm_id) values('${id(1)}','${id(10)}'),('${id(2)}','${id(11)}');`,
   );

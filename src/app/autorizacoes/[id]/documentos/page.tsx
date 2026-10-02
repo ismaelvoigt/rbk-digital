@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import ConferenciaCupons from "../../../../components/cupons/ConferenciaCupons";
+import { dispararExtracao } from "../../../../lib/cupons/client";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/client";
 import { RbkBrand } from "../../../../components/RbkBrand";
+import BaixarAutorizacaoPdf from "../../../../components/documentos/BaixarAutorizacaoPdf";
 import DocumentUploadCard from "../../../../components/documentos/DocumentUploadCard";
 import { resultadoConfirmacao } from "../../../../lib/documentos/fluxoConfirmacao";
-import { getNavegacaoPerfil } from "../../../../lib/auth/navegacaoPerfil";
+import { useNavegacaoPerfil } from "../../../../lib/auth/useNavegacaoPerfil";
 
 type Documento = {
   id: string;
@@ -49,7 +52,6 @@ function formatarNumeroAutorizacao(valor: string) {
 export default function DocumentosAutorizacao() {
   const supabase = createClient();
 
-  const [isAdmin, setIsAdmin] = useState(false);
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -64,44 +66,9 @@ export default function DocumentosAutorizacao() {
     null,
   );
   const [mensagemConfirmacao, setMensagemConfirmacao] = useState("");
+  const [avisoLeitura,setAvisoLeitura] = useState("");
 
-  useEffect(() => {
-    let ativo = true;
-
-    async function identificarPerfil() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user || !ativo) {
-        return;
-      }
-
-      const { data: administrador, error: adminError } = await supabase
-        .from("rbk_admins")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .eq("ativo", true)
-        .maybeSingle();
-
-      if (adminError) {
-        console.error("Erro ao verificar administrador:", adminError);
-        return;
-      }
-
-      if (ativo) {
-        setIsAdmin(Boolean(administrador));
-      }
-    }
-
-    identificarPerfil();
-
-    return () => {
-      ativo = false;
-    };
-  }, [supabase]);
-
-  const navegacao = getNavegacaoPerfil(isAdmin);
+  const navegacao = useNavegacaoPerfil();
 
   useEffect(() => {
     async function carregarDados() {
@@ -247,6 +214,7 @@ export default function DocumentosAutorizacao() {
         ),
       );
 
+      setAvisoLeitura(await dispararExtracao(supabase, documentoEmEdicao.id, documentoEmEdicao.categoria));
       setArquivoSubstituicao(null);
       setDocumentoEmEdicao(null);
       return true;
@@ -267,12 +235,12 @@ export default function DocumentosAutorizacao() {
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between">
           <RbkBrand compact />
-          <Link
-            href="/farmacia"
+          {navegacao && (<Link
+            href={navegacao.href}
             className="text-sm font-bold text-gray-500 hover:text-red-600"
           >
-            Início
-          </Link>
+            {navegacao.href === "/dashboard" ? navegacao.label : "Início"}
+          </Link>)}
         </div>
       </header>
 
@@ -287,6 +255,7 @@ export default function DocumentosAutorizacao() {
               #{formatarNumeroAutorizacao(numeroAutorizacao)}
             </span>
           </p>
+          <BaixarAutorizacaoPdf id={id} disabled={!numeroAutorizacao} />
         </div>
 
         <section className="rbk-card p-6 sm:p-7">
@@ -420,6 +389,8 @@ export default function DocumentosAutorizacao() {
           }}
         />
 
+        {avisoLeitura && <p role="status" className="mt-4 text-sm text-gray-600">{avisoLeitura}</p>}
+        <ConferenciaCupons autorizacaoId={id} />
         <div className="mt-8 space-y-3">
         {mensagemConfirmacao && (
           <div className="rounded-[13px] border border-green-100 bg-green-50 px-4 py-3 text-center text-sm font-semibold text-green-700">

@@ -1,3 +1,4 @@
+import type { DeliveryEvent } from "../convites/types";
 export const BUCKET = "auditoria-private";
 export const MAX_FILE = 100 * 1024 * 1024;
 export const MIME: Record<string, string> = {
@@ -33,6 +34,7 @@ export type Batch = {
 };
 export type Summary = {
   can_delete?: boolean;
+  deliveries?: DeliveryEvent[] | null;
   audit: {
     id: string;
     farm_id?: string;

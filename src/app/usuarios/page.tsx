@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { filtroFarmacias, queryFarmacias } from "../../lib/usuarios/navegacao";
 import { createClient } from "../../lib/supabase/client";
+import { ExcluirFarmacia } from "../../components/ExcluirFarmacia";
 import { RbkBrand } from "../../components/RbkBrand";
 
 type Usuario = {
@@ -183,7 +184,7 @@ export default function UsuariosPage() {
     nomeFarmacia: string
   ) {
     const confirmado = window.confirm(
-      `Excluir a farmácia "${nomeFarmacia}"?\n\n` +
+      `Inativar a farmácia "${nomeFarmacia}"?\n\n` +
         "O acesso será bloqueado, mas o histórico de autorizações e documentos será preservado."
     );
 
@@ -477,6 +478,8 @@ export default function UsuariosPage() {
                         Ver autorizações
                       </Link>
 
+                      <ExcluirFarmacia farmId={usuario.farm_id} onDeleted={() => setUsuarios((atuais) => atuais.filter((item) => item.farm_id !== usuario.farm_id))} />
+
                       {ativo && (
                         <button
                           type="button"
@@ -490,8 +493,8 @@ export default function UsuariosPage() {
                           className="rounded-xl border border-red-200 bg-white px-5 py-3 text-center text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {excluindoId === usuario.id
-                            ? "Excluindo..."
-                            : "Excluir farmácia"}
+                            ? "Inativando..."
+                            : "Inativar farmácia"}
                         </button>
                       )}
                     </div>

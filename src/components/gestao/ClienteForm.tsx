@@ -1,0 +1,21 @@
+'use client';
+import {useState,type FormEvent} from 'react';
+import {gestao,mensagem} from '../../lib/gestao/client';
+import {statusCRM,interesses,estados,type Cliente,type Contexto} from '../../lib/gestao/types';
+import {Field,Select,TextArea,buttonClass,secondaryClass,panelClass} from './Shared';
+export default function ClienteForm({cliente,ctx,onSaved,onCancel}:{cliente:Cliente|null;ctx:Contexto;onSaved:(c:Cliente)=>void;onCancel:()=>void}){
+ const [busy,setBusy]=useState(false),[error,setError]=useState('');
+ async function save(e:FormEvent<HTMLFormElement>){e.preventDefault();if(busy)return;setBusy(true);setError('');const form=new FormData(e.currentTarget);try{
+ const values=Object.fromEntries(form.entries());const c=await gestao<Cliente>('cliente_salvar',{...values,id:cliente?.id,updated_at:cliente?.updated_at,interesses:form.getAll('interesses'),aguardando_credenciamento:form.has('aguardando_credenciamento')});onSaved(c);
+ }catch(e){setError(mensagem(e));}finally{setBusy(false);}}
+ return <section className={panelClass}><h2 className="mb-5 text-xl font-bold text-gray-900">{cliente?'Editar cadastro':'Novo lead ou cliente'}</h2><form onSubmit={save}><fieldset disabled={busy} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+ <Field label="Razão social *" name="razao_social" defaultValue={cliente?.razao_social} required minLength={2} maxLength={200}/><Field label="CNPJ" name="cnpj" defaultValue={cliente?.cnpj??''} maxLength={18} placeholder="00.000.000/0000-00"/><Field label="Contato" name="contato" defaultValue={cliente?.contato} maxLength={200}/>
+ <Field label="WhatsApp" name="whatsapp" type="tel" defaultValue={cliente?.whatsapp} maxLength={25}/><Field label="E-mail" name="email" type="email" defaultValue={cliente?.email} maxLength={254}/><Field label="Cidade" name="cidade" defaultValue={cliente?.cidade} maxLength={150}/>
+ <Select label="UF" name="uf" defaultValue={cliente?.uf??''} options={[{value:'',label:'Selecione'},...estados]}/><Field label="Origem do lead" name="origem" defaultValue={cliente?.origem} maxLength={200}/><Select label="Status" name="status" defaultValue={cliente?.status??'Novo lead'} options={statusCRM}/>
+ <Field label="Último contato" name="ultimo_contato" type="date" defaultValue={cliente?.ultimo_contato??''}/><Field label="Próxima ação" name="proxima_acao" defaultValue={cliente?.proxima_acao} maxLength={500}/><Field label="Data da próxima ação" name="proxima_acao_data" type="date" defaultValue={cliente?.proxima_acao_data??''}/>
+ <Select label="Responsável *" name="responsavel_id" required defaultValue={cliente?.responsavel_id??ctx.actor_id} options={ctx.responsaveis.map(x=>({value:x.id,label:x.nome}))}/>
+ <div className="md:col-span-2 lg:col-span-3"><p className="mb-2 text-sm font-semibold text-gray-700">Interesses</p><div className="flex flex-wrap gap-4">{interesses.map(i=><label key={i} className="flex items-center gap-2 text-sm text-gray-700"><input name="interesses" type="checkbox" value={i} defaultChecked={cliente?.interesses.includes(i)} className="accent-red-700"/>{i}</label>)}</div></div>
+ <label className="flex items-center gap-2 text-sm font-semibold text-gray-700"><input name="aguardando_credenciamento" type="checkbox" defaultChecked={cliente?.aguardando_credenciamento} className="accent-red-700"/>Aguardando credenciamento/oportunidade</label>
+ <div className="md:col-span-2"><Field label="Referência da oportunidade/publicação (opcional)" name="oportunidade_referencia" defaultValue={cliente?.oportunidade_referencia} maxLength={1000}/></div><div className="md:col-span-2 lg:col-span-3"><TextArea label="Observações" name="observacoes" value={cliente?.observacoes}/></div>
+ </fieldset><p className="mt-4 text-sm text-gray-500">O CNPJ será vinculado à farmácia já cadastrada, quando houver correspondência na sua carteira. O cadastro de acesso da farmácia permanece no fluxo atual.</p>{error&&<p role="alert" className="mt-4 text-red-700">{error}</p>}<div className="mt-5 flex gap-3"><button disabled={busy} className={buttonClass}>{busy?'Salvando…':'Salvar cadastro'}</button><button type="button" disabled={busy} onClick={onCancel} className={secondaryClass}>Cancelar</button></div></form></section>;
+}

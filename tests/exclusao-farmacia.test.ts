@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 
 describe("Exclusão lógica de farmácia", () => {
-  it("deve disponibilizar a ação Excluir farmácia", async () => {
+  it("deve disponibilizar a ação Inativar farmácia", async () => {
     const source = await readFile(
       "src/app/usuarios/page.tsx",
       "utf8"
     );
 
-    expect(source).toContain("Excluir farmácia");
+    expect(source).toContain("Inativar farmácia");
   });
 
   it("deve exigir confirmação antes da exclusão", async () => {
@@ -44,7 +44,7 @@ describe("Exclusão lógica de farmácia", () => {
     );
   });
 
-  it("não deve executar DELETE físico", async () => {
+  it("inativação deve permanecer separada da exclusão definitiva", async () => {
     const source = await readFile(
       "src/app/usuarios/page.tsx",
       "utf8"
@@ -60,7 +60,7 @@ describe("Exclusão lógica de farmácia", () => {
     );
 
     expect(source).toContain("excluindoId");
-    expect(source).toContain('"Excluindo..."');
+    expect(source).toContain('"Inativando..."');
     expect(source).toContain("disabled={excluindoId === usuario.id}");
   });
 });

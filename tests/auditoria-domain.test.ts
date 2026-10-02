@@ -102,3 +102,10 @@ it("HTML/HTM é permitido exclusivamente para ofício", () => {
  expect(() => validateFiles([{...f, mime: "application/pdf"}], true)).toThrow();
  }
 });
+it("permite produção somente com ativação e referência próprias, sem herdar staging", () => {
+  const env = {AUDIT_PORTAL_ENABLED: 'true', VERCEL_ENV: 'production', AUDIT_PRODUCTION_ENABLED: 'true', AUDIT_PRODUCTION_PROJECT_REF: 'sqamrlckyuesfmibxizy', NEXT_PUBLIC_SUPABASE_URL: 'https://sqamrlckyuesfmibxizy.supabase.co'};
+  expect(assertStaging(env)).toBe('sqamrlckyuesfmibxizy');
+  for (const patch of [{AUDIT_PRODUCTION_ENABLED: undefined}, {AUDIT_PRODUCTION_PROJECT_REF: undefined}, {NEXT_PUBLIC_SUPABASE_URL: 'https://stage.supabase.co'}, {NEXT_PUBLIC_SUPABASE_URL: 'https://sqamrlckyuesfmibxizy.supabase.co.evil.org'}]) {
+    expect(() => assertStaging({...env,...patch})).toThrow();
+  }
+});

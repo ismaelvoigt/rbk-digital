@@ -21,7 +21,11 @@ const ROTAS_ADMINISTRATIVAS = [
 ];
 
 const ROTAS_COMPARTILHADAS = [
+  "/administracao",
+  "/compras",
   "/autorizacoes",
+  "/relatorios",
+  "/vendas",
 ];
 
 const ROTA_NOVA_AUTORIZACAO = "/nova-autorizacao";
@@ -67,7 +71,14 @@ export function getAccessDecision({
   const isRbk = role === "gestor_rbk" || role === "superadmin_rbk";
   const home = isRbk ? "/dashboard" : "/farmacia";
 
-  if (isRota(pathname, "/monitoramento") || isRota(pathname, "/processos")) {
+  if (isRota(pathname, "/equipe")) {
+    return role === "administrador_farmacia" ? {allowed:true} : {allowed:false,redirectTo:home};
+  }
+  if (role === "operador" && ["/administracao", "/vendas", "/compras", "/relatorios"].some(r => isRota(pathname,r))) {
+    return {allowed:false,redirectTo:home};
+  }
+
+  if (isRota(pathname, "/monitoramento") || isRota(pathname, "/processos") || isRota(pathname, "/financeiro") || isRota(pathname, "/crm")) {
     return isRbk ? { allowed: true } : { allowed: false, redirectTo: home };
   }
 

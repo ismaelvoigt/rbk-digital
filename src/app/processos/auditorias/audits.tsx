@@ -1,5 +1,4 @@
 "use client";
-import { GestorNavigation } from "../../../components/GestorNavigation";
 import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { RbkBrand } from "../../../components/RbkBrand";
@@ -8,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { managerApi } from "../../../lib/auditoria/client";
 import { bytes, date, type Summary } from "../../../lib/auditoria/domain";
 import "./auditoria.css";
+import type { DeliveryResult } from "../../../lib/convites/types";
 import ContactMessages from "./contact-messages";
 import OfficeAttachment from "./office-attachment";
 import PortalQr from "./portal-qr";
@@ -62,6 +62,7 @@ export default function Audits() {
     } catch(e) {setError((e as Error).message);} finally {setBusy(false);}
   }
   const createdLink = useRef<{ id: string; url: string } | null>(null);
+  const [delivery, setDelivery] = useState<{id:string;result:DeliveryResult} | null>(null);
   const [officeNotice, setOfficeNotice] = useState("");
   const [cnpj, setCnpj] = useState("");
   const [searchDraft, setSearchDraft] = useState("");
@@ -105,11 +106,12 @@ export default function Audits() {
     setError("");
     try {
       const result = await managerApi(`/${id}/${action}`, "POST", payload);
+      if (result.delivery && id) setDelivery({id,result:result.delivery});
       if (result.url) {
-        if (action === "link" || action === "confirm") setLink(result.url);
+        if (action === "link" || action === "confirm") {setLink(result.url);if(id)createdLink.current={id,url:result.url};}
         else window.location.assign(result.url);
       }
-      if (action === "revoke") setLink("");
+      if (action === "revoke") {setLink("");setDelivery(null);createdLink.current=null;}
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -127,14 +129,20 @@ export default function Audits() {
       const office = form.get("office");
       if (!(office instanceof File) || !office.size) throw new Error("Anexe o ofício para criar a auditoria.");
       validateOffice(office);
-      const a = await managerApi("", "POST", {
+      const payload = {
         new_farm: { name: form.get("pharmacy_name"), cnpj: form.get("cnpj") },
         contact: { email: form.get("email"), phone: form.get("phone") },
         reference: "Auditoria PFPB",
         requested: null,
         deadline: null,
         notes: "",
-      });
+      };
+      let a = await managerApi("", "POST", payload);
+      if (a.confirmation_required) {
+        if (!window.confirm(a.message)) return;
+        a = await managerApi("", "POST", { ...payload, confirm_duplicate: true });
+      }
+      if (!a.id) throw new Error("Não foi possível criar a auditoria. Tente novamente.");
       if (office instanceof File && office.size) {
         try {
           await uploadOffice(a.id, office, (n) =>
@@ -142,7 +150,8 @@ export default function Audits() {
           );
           const confirmed = await managerApi(`/${a.id}/confirm`, "POST", {});
           if (confirmed.url) createdLink.current = { id: a.id, url: confirmed.url };
-          setOfficeNotice("Auditoria confirmada e link gerado. E-mail e WhatsApp não enviados: envio automático ainda não ativado neste portal.");
+          if (confirmed.delivery) setDelivery({id:a.id,result:confirmed.delivery});
+          setOfficeNotice("Auditoria confirmada e link gerado. Confira o resultado de cada canal em Entrega do acesso.");
         } catch (e) {
           setOfficeNotice(
             "Cadastro salvo, mas a confirmação não foi concluída: " +
@@ -193,7 +202,6 @@ export default function Audits() {
           </Link>
         </div>
       </header>
-      <GestorNavigation home="https://rbk-digital.vercel.app/dashboard" />
       <div className="aud-content">
         <p className="aud-eyebrow">
           <Link href="/dashboard">GESTOR RBK</Link> /{" "}
@@ -219,7 +227,7 @@ export default function Audits() {
           )}
         </div>
         <small>
-          Homologação · Conferência automática das autorizações ainda não está ativa.
+          Conferência automática das autorizações ainda não está ativa.
         </small>
         {error && (
           <div role="alert" className="aud-alert">
@@ -251,7 +259,7 @@ export default function Audits() {
                   <label>E-mail do cliente<input name="email" type="email" required maxLength={254} disabled={busy} autoComplete="email" /></label>
                   <label>Celular / WhatsApp<input name="phone" type="tel" required maxLength={40} placeholder="(DDD) 99999-9999" disabled={busy} autoComplete="tel" /></label>
                 </div>
-                <small>Ao confirmar, o link será gerado com validade de 40 dias. Em homologação, e-mail e WhatsApp ainda não são enviados: envio automático ainda não ativado neste portal.</small>
+                <small>Ao confirmar, o link será gerado com validade de 40 dias. O resultado do e-mail será exibido após a confirmação. O WhatsApp abrirá uma mensagem para envio manual.</small>
                 <label className="aud-drop">
                   <strong>Anexar ofício (obrigatório)</strong>
                   <span className="aud-upload-help">Selecione o ofício recebido do Farmácia Popular no botão abaixo.</span>
@@ -515,7 +523,7 @@ export default function Audits() {
                   )}
                 </section>
                 {!detail.audit.confirmed_at && !detail.link && <button disabled={busy} onClick={() => void act("confirm")}>Concluir cadastro e gerar link</button>}
-                <ContactMessages key={detail.audit.id} audit={detail.audit} link={link} expires={detail.link?.expires_at} onSave={(contact) => act("contact", contact)} />
+                <ContactMessages delivery={delivery?.id===id?delivery.result:undefined} history={detail.deliveries} key={detail.audit.id} audit={detail.audit} link={link} expires={detail.link?.expires_at} onSave={(contact) => act("contact", contact)} />
                 <section className="aud-card">
                   <h2>Histórico operacional</h2>
                   <ul>

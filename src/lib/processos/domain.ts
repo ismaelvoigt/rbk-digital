@@ -11,6 +11,7 @@ export const TYPES = [
   ["cnd", "Regularidade fiscal — Fazenda Nacional"],
   ["crt", "CRT / CRF"],
   ["representante", "Identidade / CPF e representação legal"],
+  ["residencial", "Documento Residencial"],
   ["rt", "Identidade / CPF do responsável técnico"],
   ["banco", "Comprovante bancário da matriz"],
   ["rta", "RTA — Requerimento de Termo de Adesão"],
@@ -168,11 +169,11 @@ export function analyze(
           .map((e) => digits(e.value)) ?? [],
       ),
     ];
-    if (d && expectedCnpj && cnpjs.length && !cnpjs.includes(expectedCnpj))
+    if (kind !== "residencial" && d && expectedCnpj && cnpjs.length && !cnpjs.includes(expectedCnpj))
       issues.push(
         "CNPJ extraído diverge da ficha; pode pertencer ao emissor. Conferir evidências.",
       );
-    if (d && !["representante", "rt"].includes(kind) && !cnpjs.length)
+    if (d && !["representante", "rt", "residencial"].includes(kind) && !cnpjs.length)
       issues.push("CNPJ não extraído com segurança.");
     const compare = (field: string, expected: string | undefined) => {
       const values = d?.evidence.filter((e) => e.field === field) ?? [];
@@ -187,7 +188,8 @@ export function analyze(
           `${field} extraído difere da referência; abreviações/OCR podem explicar a diferença.`,
         );
     };
-    compare("Razão social", ficha.B21);
+    if (kind !== "residencial") compare("Razão social", ficha.B21);
+    if (kind === "residencial") issues.push("Conferir titularidade e endereço residencial visualmente.");
     if (["contrato_social", "afe", "licenca_sanitaria", "crt"].includes(kind)) {
       const ref = reference?.evidence.find((e) => e.field === "Endereço");
       compare("Endereço", ref?.value);

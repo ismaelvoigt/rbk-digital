@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { formatTelefone, normalizeTelefone } from "../../../../lib/cadastro/telefone";
 import { useRetornoFarmacias } from "../../../../lib/usuarios/useRetornoFarmacias";
 import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -135,7 +136,7 @@ export default function EditarCadastroFarmaciaPage() {
         setNomeFantasia(farm.nome_fantasia ?? "");
         setCnpj(farm.cnpj ?? "");
         setEmail(usuario.email ?? "");
-        setTelefone(farm.telefone ?? "");
+        setTelefone(normalizeTelefone(farm.telefone ?? "") ?? farm.telefone ?? "");
         setCidade(farm.cidade ?? "");
         setEstado(farm.estado ?? "");
         setStatus(
@@ -433,10 +434,16 @@ export default function EditarCadastroFarmaciaPage() {
 
                 <input
                   id="telefone"
+                  maxLength={15}
+                  inputMode="tel"
+                  autoComplete="tel-national"
+                  placeholder="(11) 99999-9999"
+                  pattern={"\\([1-9]{2}\\) [0-9]{4,5}-[0-9]{4}"}
+                  title="Informe o telefone com DDD: (11) 3333-4444 ou (11) 99999-9999."
                   type="tel"
                   value={telefone}
                   onChange={(event) =>
-                    setTelefone(event.target.value)
+                    setTelefone(formatTelefone(event.target.value))
                   }
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[var(--rbk-red)] focus:ring-2 focus:ring-red-600/20"
                 />

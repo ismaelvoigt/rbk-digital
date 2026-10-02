@@ -178,7 +178,7 @@ export default function AutorizacoesUsuario() {
             perfil,
             status,
             farm_id,
-            farms (
+            farms!users_farm_id_fkey (
               razao_social,
               nome_fantasia,
               cnpj
