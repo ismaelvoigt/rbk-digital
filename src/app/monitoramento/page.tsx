@@ -45,7 +45,24 @@ export default function MonitoramentoPage() {
       </header>
       <div className="rbk-container py-8 sm:py-10">
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-red-600">RBK Digital</p>
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">Centro de Monitoramento</h1>
+        <h1 className="mt-2 flex items-center gap-2 text-3xl font-bold text-gray-900">
+          <svg
+            className="h-8 w-8 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+            <path d="m6 10 3-3 3 6 3-3" />
+          </svg>
+          <span>Centro de Monitoramento</span>
+        </h1>
         <p className="mt-2 text-sm text-gray-600">Farmácias da carteira vinculada ao seu perfil.</p>
         {loading && <p className="mt-8 text-sm text-gray-600">Carregando farmácias...</p>}
         {error && <p role="alert" className="mt-8 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
