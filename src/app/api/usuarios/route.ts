@@ -1,3 +1,4 @@
+import { publicOrigin } from "../../../lib/config/ambiente";
 import { normalizeTelefone } from "../../../lib/cadastro/telefone";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -530,7 +531,7 @@ export async function POST(request: Request) {
     } = await admin.auth.admin.generateLink({
       type: "invite",
       email,
-      options: { redirectTo: "https://rbk-digital.vercel.app/primeiro-acesso" },
+      options: { redirectTo: `${publicOrigin()}/primeiro-acesso` },
     });
 
     if (conviteError || !convite.user || !convite.properties?.hashed_token) {
@@ -590,7 +591,7 @@ export async function POST(request: Request) {
 
     // Send only once the pharmacy and its access record are both persisted.
     try {
-      const primeiroAcesso = new URL("https://rbk-digital.vercel.app/primeiro-acesso");
+      const primeiroAcesso = new URL(`${publicOrigin()}/primeiro-acesso`);
       primeiroAcesso.searchParams.set("type", "invite");
       primeiroAcesso.searchParams.set("token_hash", convite.properties.hashed_token);
       await sendInvitation(email, nomeFantasia || razaoSocial, primeiroAcesso.toString());

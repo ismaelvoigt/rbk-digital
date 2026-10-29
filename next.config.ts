@@ -1,4 +1,7 @@
+import { assertDevelopmentIsolation } from "./src/lib/config/ambiente";
 import type { NextConfig } from "next";
+
+assertDevelopmentIsolation();
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["tesseract.js", "pdfjs-dist", "@napi-rs/canvas"],
