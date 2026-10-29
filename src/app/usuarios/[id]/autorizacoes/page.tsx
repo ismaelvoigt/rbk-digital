@@ -354,8 +354,22 @@ export default function AutorizacoesUsuario() {
             Administração
           </div>
 
-          <h1 className="mt-2 text-4xl font-bold tracking-tight text-gray-900">
-            Autorizações da farmácia
+          <h1 className="mt-2 flex items-center gap-2 text-4xl font-bold tracking-tight text-gray-900">
+            <svg
+              className="h-9 w-9 shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+              <polyline points="14 2 14 8 20 8" />
+              <path d="m9 15 2 2 4-4" />
+            </svg>
+            <span>Autorizações da farmácia</span>
           </h1>
 
           <p className="mt-3 text-lg text-gray-500">
