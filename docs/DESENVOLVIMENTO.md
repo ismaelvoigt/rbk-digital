@@ -15,12 +15,13 @@ O projeto de testes usa o ambiente padrão chamado Production pela Vercel para s
 ## Começar no próprio computador
 
 1. Usar Node.js 24 e acesso individual ao GitHub.
-2. Clonar o repositório e escolher a branch de preparação enquanto este trabalho não for integrado em develop:
+2. A preparação ainda não foi enviada ao GitHub. Receber o arquivo rbk-digital-desenvolvimento.bundle junto deste guia e clonar a cópia preparada, enquanto o trabalho não for integrado em develop:
 
 ```sh
-git clone https://github.com/ismaelvoigt/rbk-digital.git
+git clone rbk-digital-desenvolvimento.bundle rbk-digital
 cd rbk-digital
 git switch chore/separacao-ambientes
+git remote set-url origin https://github.com/ismaelvoigt/rbk-digital.git
 npm ci
 cp .env.development.example .env.local
 ```
@@ -51,10 +52,10 @@ Baseline conhecido: tests/pfpb-workbook.test.ts depende de private/ficha-templat
 ## Limitações e publicação
 
 - A conexão Supabase do conector não é compartilhada automaticamente com a Vercel.
-- A chave administrativa de desenvolvimento precisa ser adicionada diretamente à Vercel como Secret.
+- A chave administrativa de desenvolvimento já foi adicionada diretamente à Vercel como Secret nos três ambientes. O valor não foi exposto no chat nem incluído no código.
 - Convites por email dependem de SMTP dedicado; não reutilizar SMTP de produção sem decisão explícita.
 - O portal externo de credenciamento possui integração legada separada e permanece fora desta liberação.
-- Os previews do projeto original rbk-digital ainda precisam ser desativados/restringidos antes de liberar o fluxo automático de novas branches: as definições antigas de preview abrangem o banco de produção.
+- Por decisão do responsável, os previews do projeto original rbk-digital foram mantidos. Eles ainda usam configurações do banco de produção; não usar essas URLs para testes com escrita. Antes de enviar branches ao GitHub, revisar esse comportamento. A publicação inicial de testes foi feita diretamente, sem push e sem mudar as prévias antigas.
 - Esta preparação não publica nem migra produção. O deploy de testes só deve ocorrer após conferir branch, referência do banco e segredo de desenvolvimento.
 
 ## Verificação desta preparação (29/10/2026)
@@ -63,4 +64,7 @@ Baseline conhecido: tests/pfpb-workbook.test.ts depende de private/ficha-templat
 - 3 falhas conhecidas em tests/pfpb-workbook.test.ts por falta de private/ficha-template.xlsx.
 - TypeScript sem erros.
 - Build com Webpack aprovado. O build padrão com Turbopack foi impedido pelo sandbox local ao abrir porta interna; não foi classificado como aprovado.
-- Nenhum deploy do aplicativo realizado nesta preparação.
+- Publicação inicial READY: dpl_GeX4RhJeFkxg5i4hFiJ5MtKPjF3o, código f15616e, https://rbk-digital-testes.vercel.app.
+- Página inicial HTTP 200 e faixa de desenvolvimento confirmadas. JavaScript carregado aponta somente para ympeqcycjadvvumanmwm.supabase.co.
+- Login com conta fictícia inexistente foi recusado pelo Supabase. Não foram criadas contas nem copiados dados. Login válido e fluxos internos ainda dependem de contas de teste.
+- Publicação direta do computador, sem push, merge ou alteração da produção. A branch develop remota ainda não contém esta preparação. Não tratar futuras publicações automáticas como validadas até integrar as mudanças de isolamento.
