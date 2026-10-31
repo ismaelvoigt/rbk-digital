@@ -453,6 +453,7 @@ export default function NovaAutorizacao() {
               <input
                 value={numero}
                 onChange={(e) => setNumero(formatarNumeroAutorizacao(e.target.value))}
+                inputMode="numeric"
                 placeholder="Ex.: 000.000.000.000.000"
                 required
                 className="rbk-input"
