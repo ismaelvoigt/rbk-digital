@@ -197,10 +197,6 @@ export default function Audits() {
         </div>
       </header>
       <div className="aud-content">
-        <p className="aud-eyebrow">
-          <Link href="/dashboard">GESTOR RBK</Link> /{" "}
-          <Link href="/processos/auditorias">AUDITORIAS PFPB</Link>
-        </p>
         <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">
           ← Voltar ao Dashboard
         </Link>
