@@ -1,15 +1,20 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { dispararExtracao } from "../../lib/cupons/client";
 import DocumentUploadCard from "../../components/documentos/DocumentUploadCard";
 import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
+import { enviarLote, type EnvioDocumento, type EstadoEnvio } from "../../lib/documentos/envio";
 import { mensagemErroAutorizacao } from "../../lib/documentos/mensagemErroAutorizacao";
 import CamposCrm from "../../components/relatorios/CamposCrm";
 import { normalizarCrm } from "../../lib/relatorios/filtros";
-import QrCodeScanner from "../../components/qrcode/QrCodeScanner";
+const QrCodeScanner = dynamic(() => import('../../components/qrcode/QrCodeScanner'), {
+  ssr:false,
+  loading:()=> <p role="status" className="p-4 text-sm text-gray-600">Abrindo leitor de QR Code...</p>,
+});
 
 type Categoria =
   | "documento_cliente"
@@ -22,11 +27,6 @@ type AutorizacaoSalva = {
   numero: string;
   cpf: string;
   data: string;
-};
-
-type ArquivoSelecionado = {
-  file: File | null;
-  categoria: Categoria;
 };
 
 function formatarCpf(value: string) {
@@ -48,13 +48,6 @@ function formatarCpf(value: string) {
 
 function cpfValido(cpf: string) {
   return cpf.replace(/\D/g, "").length === 11;
-}
-
-function nomeSeguro(nome: string) {
-  return nome
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
 function formatarNumeroAutorizacao(valor: string) {
@@ -96,12 +89,28 @@ export default function NovaAutorizacao() {
   const [carregando, setCarregando] = useState(false);
   const [autorizacaoSalva, setAutorizacaoSalva] =
     useState<AutorizacaoSalva | null>(null);
-  const [salvo, setSalvo] = useState(false);
-  const [resumo, setResumo] = useState<{
-    numero: string;
-    cpf: string;
-    data: string;
-  } | null>(null);
+  const [iniciada, setIniciada] = useState(false);
+  const [estados, setEstados] = useState<Record<string, EstadoEnvio>>({});
+  const [itensEnvio,setItensEnvio] = useState<{id:string;categoria:string}[]>([]);
+  const emEnvio = useRef(false);
+  const tentativa = useRef<{id:string;userId:string;data:string;criada:boolean;envios:EnvioDocumento[]} | null>(null);
+
+  const temPendentes = !autorizacaoSalva && (iniciada || Object.values(arquivos).some(Boolean) || outrosArquivos.length > 0);
+  useEffect(() => {
+    if (!temPendentes) return;
+    const avisar = (event:BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload',avisar);
+    return () => window.removeEventListener('beforeunload',avisar);
+  },[temPendentes]);
+
+  function estadoCategoria(categoria:Categoria): EstadoEnvio | undefined {
+    const itens = itensEnvio.filter(e=>e.categoria===categoria);
+    if (!itens.length) return undefined;
+    if (itens.every(e=>estados[e.id]==='salvo')) return 'salvo';
+    if (itens.some(e=>estados[e.id]==='enviando')) return 'enviando';
+    if (itens.some(e=>estados[e.id]==='falhou')) return 'falhou';
+    return 'selecionado';
+  }
 
   function definirArquivo(categoria: Categoria, file: File | null) {
     setArquivos((atual) => ({
@@ -112,6 +121,7 @@ export default function NovaAutorizacao() {
 
   async function salvar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (emEnvio.current) return;
 
     setMensagem("");
     setErro("");
@@ -151,7 +161,9 @@ export default function NovaAutorizacao() {
       return;
     }
 
+    emEnvio.current = true;
     setCarregando(true);
+    let duplicidadeConfirmada = false;
 
     try {
       const {
@@ -163,106 +175,59 @@ export default function NovaAutorizacao() {
         return;
       }
 
-      const dataAutorizacao = new Date().toISOString().slice(0, 10);
-
-      const { data: autorizacao, error: erroAutorizacao } =
-        await supabase
-          .from("autorizacoes")
-          .insert({
+      if (!tentativa.current) {
+        const id = crypto.randomUUID();
+        const data = new Date().toISOString().slice(0,10);
+        const envios:EnvioDocumento[] = [];
+        for (const categoria of ["documento_cliente","receita_medica","cupom_fiscal","cupom_vinculado","outros"] as Categoria[]) {
+          const selecionados = categoria === 'outros' ? outrosArquivos : arquivos[categoria] ? [arquivos[categoria]!] : [];
+          for (const file of selecionados) {
+            const documentoId = crypto.randomUUID();
+            const extensao = file.name.split('.').pop()?.replace(/[^a-zA-Z0-9]/g,'') || 'bin';
+            envios.push({id:documentoId,autorizacaoId:id,categoria,file,nome:file.name,
+              caminho:`${user.id}/${id}/${categoria}-${documentoId}.${extensao}`});
+          }
+        }
+        tentativa.current = {id,userId:user.id,data,criada:false,envios};
+        setItensEnvio(envios.map(({id,categoria})=>({id,categoria})));
+        setIniciada(true);
+      }
+      const atual = tentativa.current;
+      if (atual.userId !== user.id) throw new Error('A sessão mudou. Entre com o usuário que iniciou o envio.');
+      const dataAutorizacao = atual.data;
+      if (!atual.criada) {
+        // A stable id also recovers an authorization whose response was lost.
+        try {
+          const {data:autorizacao,error} = await supabase.from('autorizacoes').insert({
+            id:atual.id,
             numero_autorizacao: numero.replace(/\D/g, ""),
             data_autorizacao: dataAutorizacao,
-            cpf_cliente: cpf.replace(/\D/g, ""),
-            ...(crm.trim() ? normalizarCrm(crm, crmUf) : {}),
+            cpf_cliente:cpf.replace(/\D/g,''),
+            ...(crm.trim() ? normalizarCrm(crm,crmUf) : {}),
             user_id: user.id,
-          })
-          .select("id")
-          .single();
-
-      if (erroAutorizacao || !autorizacao) {
-        const codigoErro = erroAutorizacao?.code;
-        const mensagemErro = erroAutorizacao?.message ?? "";
-
-        if (
-          codigoErro === "23505" ||
-          /duplicate|unique|already exists/i.test(mensagemErro)
-        ) {
-          // Mensagem ao usuário: Esta autorização já está cadastrada.
-          setErro(mensagemErroAutorizacao({ code: "23505" }));
-          return;
+          }).select('id').single();
+          if (error || autorizacao?.id !== atual.id) throw error || new Error('Não foi possível confirmar a autorização.');
+        } catch (error) {
+          const {data:existente,error:consultaErro} = await supabase.from('autorizacoes')
+            .select('id,numero_autorizacao,cpf_cliente,user_id').eq('id',atual.id).maybeSingle();
+          if (consultaErro) throw new Error('A confirmação da autorização está indisponível. Tente novamente.');
+          if (!existente) {
+            // Reset only a confirmed conflict with another authorization, never a failed readback.
+            duplicidadeConfirmada = Boolean(error && typeof error === 'object' && 'code' in error && error.code === '23505');
+            throw error;
+          }
+          if (existente.user_id !== user.id || existente.numero_autorizacao !== numero.replace(/\D/g,'') || existente.cpf_cliente !== cpf.replace(/\D/g,'')) {
+            throw new Error('A autorização retornada não corresponde ao envio.');
+          }
         }
-
-        throw new Error(
-          mensagemErro ||
-            "Não foi possível criar a autorização."
-        );
+        atual.criada = true;
       }
-
-      const avisosLeitura: string[] = [];
-      const categorias: Categoria[] = [
-        "documento_cliente",
-        "receita_medica",
-        "cupom_fiscal",
-        "cupom_vinculado",
-        "outros",
-      ];
-
-      for (const categoria of categorias) {
-        const arquivosDaCategoria =
-          categoria === "outros"
-            ? outrosArquivos
-            : arquivos[categoria]
-              ? [arquivos[categoria] as File]
-              : [];
-
-        for (const file of arquivosDaCategoria) {
-
-     const extensao = file.name.includes(".")
-  ? file.name.substring(file.name.lastIndexOf("."))
-  : "";
-
-const hoje = new Date();
-const dia = String(hoje.getDate()).padStart(2, "0");
-const mes = String(hoje.getMonth() + 1).padStart(2, "0");
-const ano = hoje.getFullYear();
-
-const nomeArquivo = `${numero.replace(/\D/g, "")}_${categoria}_${dia}_${mes}_${ano}${extensao}`;
-
-const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeArquivo}`;
-
-        const { error: erroUpload } = await supabase.storage
-          .from("documentos")
-          .upload(caminho, file, {
-            upsert: false,
-            contentType: file.type || "application/octet-stream",
-          });
-
-        if (erroUpload) {
-          throw new Error(
-            `Erro ao enviar ${categoria}: ${erroUpload.message}`
-          );
-        }
-
-        const { data: documentoNovo, error: erroDocumento } = await supabase
-          .from("documentos")
-          .insert({
-            autorizacao_id: autorizacao.id,
-            categoria,
-            nome_arquivo: nomeArquivo,
-            caminho_arquivo: caminho,
-            status: "recebido",
-          }).select("id").single();
-
-        if (erroDocumento) {
-          await supabase.storage
-            .from("documentos")
-            .remove([caminho]);
-
-          throw new Error(
-            `Erro ao registrar ${categoria}: ${erroDocumento.message}`
-          );
-        }
-        if (documentoNovo) { const aviso = await dispararExtracao(supabase, documentoNovo.id, categoria); if (aviso) avisosLeitura.push(aviso); }
-        }
+      const completo = await enviarLote(supabase,atual.envios,(envio,estado)=>{
+        setEstados(anteriores=>({...anteriores,[envio.id]:estado}));
+      });
+      if (!completo) {
+        setErro('Há documentos sem confirmação. Os já salvos foram preservados. Mantenha esta tela aberta e clique em Tentar novamente para enviar apenas os pendentes.');
+        return;
       }
 
       setAutorizacaoSalva({
@@ -271,15 +236,21 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
         data: dataAutorizacao,
       });
 
-      setMensagem("Autorização cadastrada com sucesso. " + [...new Set(avisosLeitura)].join(" "));
-    } catch (error) {
-      const erroSupabase =
-        error && typeof error === "object"
-          ? (error as { code?: string; message?: string })
-          : {};
-
-      setErro(mensagemErroAutorizacao(erroSupabase));
+      setMensagem("Autorização cadastrada com sucesso.");
+      // Extraction is independent of storage confirmation; its endpoint queues work server-side.
+      void Promise.allSettled(atual.envios.filter(e=>e.categoria.startsWith('cupom')).map(e=>dispararExtracao(supabase,e.id,e.categoria)));
+    } catch {
+      if (duplicidadeConfirmada) {
+        tentativa.current = null;
+        setIniciada(false);
+        setItensEnvio([]);
+        setEstados({});
+        setErro(mensagemErroAutorizacao({ code: "23505" }));
+      } else {
+        setErro('Não foi possível concluir. Mantenha esta tela aberta e tente novamente. Os arquivos confirmados serão preservados.');
+      }
     } finally {
+      emEnvio.current = false;
       setCarregando(false);
     }
   }
@@ -363,7 +334,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
                     Documentação salva com sucesso
                   </p>
                   <p className="mt-1 text-xs leading-5 text-green-700">
-                    Os documentos enviados foram vinculados à autorização.
+                    Os documentos enviados foram vinculados à autorização. A leitura dos cupons é separada; acompanhe o resultado na autorização.
                   </p>
                 </div>
               </div>
@@ -379,6 +350,10 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
                 <button
                   type="button"
                   onClick={() => {
+                    tentativa.current = null;
+                    setIniciada(false);
+                    setEstados({});
+                    setItensEnvio([]);
                     setAutorizacaoSalva(null);
                     setMensagem("");
                     setErro("");
@@ -413,6 +388,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
           <RbkBrand compact light />
           <Link
             href="/farmacia"
+            onClick={(event) => { if (temPendentes && !window.confirm('Há arquivos pendentes nesta tela. Sair perde a seleção desses arquivos. Deseja sair?')) event.preventDefault(); }}
             className="text-sm font-bold text-gray-500 hover:text-red-600"
           >
             Início
@@ -450,86 +426,9 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
         </div>
 
         <section className="rbk-card p-5 sm:p-8">
-          {mensagem && resumo && (
-          <section className="mb-8 rounded-2xl border border-green-200 bg-green-50 p-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-lg font-bold text-green-700">
-                ✓
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-bold text-green-800">
-                  Autorização cadastrada com sucesso
-                </h2>
-
-                <p className="mt-1 text-sm text-green-700">
-                  O cadastro foi realizado e os documentos foram recebidos.
-                </p>
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl border border-green-100 bg-white p-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
-                      Número da autorização
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-gray-900">
-                      {resumo.numero}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-green-100 bg-white p-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
-                      CPF do cliente
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-gray-900">
-                      {resumo.cpf}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-green-100 bg-white p-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
-                      Data da autorização
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-gray-900">
-                      {resumo.data.split("-").reverse().join("/")}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <Link
-                    href="/autorizacoes"
-                    className="rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700"
-                  >
-                    Ver autorizações
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMensagem("");
-                      setResumo(null);
-                      setCpf("");
-                      setNumero("");
-                    setCrm(""); setCrmUf("");
-                      setArquivos({
-                        documento_cliente: null,
-                        receita_medica: null,
-                        cupom_fiscal: null,
-                        cupom_vinculado: null,
-                        outros: null,
-                      });
-                    }}
-                    className="rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
-                  >
-                    Cadastrar nova autorização
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
 
         <form onSubmit={salvar} className="space-y-7">
+            <fieldset disabled={iniciada || carregando} className="space-y-7">
             <div>
               <label className="mb-2 block text-sm font-semibold text-gray-700">
                 CPF do cliente *
@@ -572,13 +471,15 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-500">
-                  Os documentos serão salvos junto à autorização.
+                  As fotos ficam selecionadas nesta tela até você clicar em Salvar autorização. Aguarde a confirmação de cada arquivo antes de sair.
                 </p>
               </div>
 
               <div className="space-y-4">
                 <DocumentUploadCard
                   title="Doc. Cliente (RG/CNH)"
+                  disabled={iniciada || carregando}
+                  estadoEnvio={estadoCategoria("documento_cliente")}
                   accent="red"
                   onFileChange={(file) =>
                     definirArquivo("documento_cliente", file)
@@ -587,6 +488,8 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
 
                 <DocumentUploadCard
                   title="Receita Médica"
+                  disabled={iniciada || carregando}
+                  estadoEnvio={estadoCategoria("receita_medica")}
                   accent="orange"
                   onFileChange={(file) =>
                     definirArquivo("receita_medica", file)
@@ -596,6 +499,8 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
 
                 <DocumentUploadCard
                   title="Cupom Fiscal"
+                  disabled={iniciada || carregando}
+                  estadoEnvio={estadoCategoria("cupom_fiscal")}
                   accent="green"
                   onFileChange={(file) =>
                     definirArquivo("cupom_fiscal", file)
@@ -604,6 +509,8 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
 
                 <DocumentUploadCard
                   title="Cupom Vinculado"
+                  disabled={iniciada || carregando}
+                  estadoEnvio={estadoCategoria("cupom_vinculado")}
                   accent="blue"
                   onFileChange={(file) =>
                     definirArquivo("cupom_vinculado", file)
@@ -612,6 +519,8 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
 
                 <DocumentUploadCard
                   title="Outros Documentos"
+                  disabled={iniciada || carregando}
+                  estadoEnvio={estadoCategoria("outros")}
                   accent="purple"
                   optional
                   multiple
@@ -620,8 +529,12 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
               </div>
             </div>
 
+            </fieldset>
+
+            {iniciada && <p role="status" className="text-sm text-gray-600">{Object.values(estados).filter(e=>e==='salvo').length} de {itensEnvio.length} arquivos confirmados. Não feche esta tela enquanto houver pendentes.</p>}
+
             {erro && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
                 {erro}
               </div>
             )}
@@ -639,7 +552,7 @@ const caminho = `${user.id}/${autorizacao.id}/${categoria}-${Date.now()}-${nomeA
             >
               {carregando
                 ? "Salvando autorização e documentos..."
-                : "Salvar autorização"}
+                : iniciada ? "Tentar novamente" : "Salvar autorização"}
             </button>
           </form>
         </section>
