@@ -34,3 +34,7 @@ Baseline conhecido: três falhas em `tests/pfpb-workbook.test.ts` porque `privat
 ## Limites desta etapa
 
 Sem migração de banco e sem persistência local de imagens. A fila de leitura não condiciona a confirmação do armazenamento. Se a aba for encerrada, os arquivos pendentes precisam ser selecionados novamente; esta alteração não implementa uma fila offline persistente. Agregação dos indicadores no servidor permanece como melhoria futura; o painel agora consulta páginas e libera a navegação antes delas.
+
+## Atualização de desempenho
+
+O envio mantém no máximo dois uploads simultâneos, permitindo a confirmação de arquivos anteriores enquanto os próximos são enviados (até quatro documentos em processamento total). A tela documental consulta autorização e anexos em paralelo após validar a sessão. Em falha, oferece Tentar novamente; durante a espera, mantém um link de retorno. O teclado numérico também foi habilitado no número da autorização do cadastro novo.

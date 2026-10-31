@@ -30,14 +30,19 @@ export async function confirmarDocumento(client: SupabaseClient, id: string, esp
   return data;
 }
 
-async function armazenarDocumento(client:SupabaseClient,envio:EnvioDocumento) {
+type LimitarUpload = (enviar:()=>Promise<void>)=>Promise<void>;
+const semLimite:LimitarUpload = enviar=>enviar();
+
+async function armazenarDocumento(client:SupabaseClient,envio:EnvioDocumento,limitarUpload:LimitarUpload=semLimite) {
   if (!envio.armazenado) {
     // A unique, stable path lets a retry recover a lost acknowledgement without overwriting.
     try {
-      const {error} = await client.storage.from('documentos').upload(envio.caminho,envio.file,{
-        upsert:false,contentType:envio.file.type || 'application/octet-stream',
+      await limitarUpload(async()=>{
+        const {error} = await client.storage.from('documentos').upload(envio.caminho,envio.file,{
+          upsert:false,contentType:envio.file.type || 'application/octet-stream',
+        });
+        if (error) throw error;
       });
-      if (error) throw error;
     } catch {
       // Check the exact object even after an ambiguous network error.
       await verificarObjeto(client,envio.caminho,envio.file.size);
@@ -50,9 +55,9 @@ async function armazenarDocumento(client:SupabaseClient,envio:EnvioDocumento) {
   }
 }
 
-export async function enviarDocumento(client: SupabaseClient, envio: EnvioDocumento) {
+export async function enviarDocumento(client: SupabaseClient, envio: EnvioDocumento,limitarUpload:LimitarUpload=semLimite) {
   if (envio.confirmado) return;
-  await armazenarDocumento(client,envio);
+  await armazenarDocumento(client,envio,limitarUpload);
   const row = {id:envio.id,autorizacao_id:envio.autorizacaoId,categoria:envio.categoria,
     nome_arquivo:envio.nome,caminho_arquivo:envio.caminho,status:'recebido'};
   try {
@@ -73,13 +78,25 @@ export async function enviarLote(client: SupabaseClient, envios: EnvioDocumento[
   atualizar?: (envio:EnvioDocumento,estado:EstadoEnvio)=>void) {
   let proximo = 0;
   let completo = true;
+  let uploadsAtivos = 0;
+  const aguardando:(()=>void)[] = [];
+  const limitarUpload:LimitarUpload = async enviar=>{
+    if (uploadsAtivos >= 2) await new Promise<void>(resolve=>aguardando.push(resolve));
+    else uploadsAtivos++;
+    try { await enviar(); }
+    finally {
+      const proximo = aguardando.shift();
+      if (proximo) proximo();
+      else uploadsAtivos--;
+    }
+  };
   async function worker() {
     while (proximo < envios.length) {
       const envio = envios[proximo++];
       if (envio.confirmado) continue;
       atualizar?.(envio,'enviando');
       try {
-        await enviarDocumento(client,envio);
+        await enviarDocumento(client,envio,limitarUpload);
         atualizar?.(envio,'salvo');
       } catch {
         completo = false;
@@ -87,7 +104,9 @@ export async function enviarLote(client: SupabaseClient, envios: EnvioDocumento[
       }
     }
   }
-  await Promise.all([worker(),worker()]);
+  // Keep two network uploads busy while earlier files await metadata/database confirmation.
+  // Bound total in-flight documents too, so a large batch cannot flood the metadata API.
+  await Promise.all(Array.from({length:Math.min(4,envios.length)},()=>worker()));
   return completo;
 }
 

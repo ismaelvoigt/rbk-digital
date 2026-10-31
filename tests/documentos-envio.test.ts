@@ -68,3 +68,14 @@ describe('substituição segura',()=>{
   await expect(substituirDocumentoConfirmado(a.client,j,'old')).rejects.toThrow();expect(remove).not.toHaveBeenCalled();
  });
 });
+
+it('inicia os próximos uploads enquanto os anteriores aguardam registro',async()=>{
+ const a=ambiente(),jobs=Array.from({length:8},(_,i)=>job(`pipeline-${i}`));
+ let liberar:()=>void=()=>{};const gate=new Promise<void>(resolve=>{liberar=resolve});
+ const save=a.insert.getMockImplementation()!;
+ a.insert.mockImplementation(async row=>{await gate;return save(row)});
+ const lote=enviarLote(a.client,jobs);
+ try{await vi.waitFor(()=>expect(a.upload).toHaveBeenCalledTimes(4),{timeout:150,interval:10});}
+ finally{liberar();await lote;}
+ expect(jobs.every(j=>j.confirmado)).toBe(true);
+});

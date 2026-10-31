@@ -8,6 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/client";
 import { RbkBrand } from "../../../../components/RbkBrand";
 import BaixarAutorizacaoPdf from "../../../../components/documentos/BaixarAutorizacaoPdf";
+import { carregarDocumentosAutorizacao } from "../../../../lib/documentos/carregamento";
 import { substituirDocumentoConfirmado, type EnvioDocumento } from "../../../../lib/documentos/envio";
 import { resultadoConfirmacao } from "../../../../lib/documentos/fluxoConfirmacao";
 import { useNavegacaoPerfil } from "../../../../lib/auth/useNavegacaoPerfil";
@@ -58,6 +59,9 @@ export default function DocumentosAutorizacao() {
   const [numeroAutorizacao, setNumeroAutorizacao] = useState("");
   const [documentos, setDocumentos] = useState<Documento[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [erroCarregamento,setErroCarregamento] = useState('');
+  const [recarregar,setRecarregar] = useState(0);
+  const [idCarregado,setIdCarregado] = useState<string | null>(null);
   const substituirInputRef = useRef<HTMLInputElement>(null);
   const [arquivoSubstituicao, setArquivoSubstituicao] = useState<File | null>(
     null,
@@ -76,41 +80,22 @@ export default function DocumentosAutorizacao() {
   const navegacao = useNavegacaoPerfil();
 
   useEffect(() => {
+    let ativo = true;
     async function carregarDados() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        window.location.href = "/";
-        return;
-      }
-
-      const { data: autorizacao } = await supabase
-        .from("autorizacoes")
-        .select("numero_autorizacao")
-        .eq("id", id)
-        .single();
-      if (!autorizacao) {
-        setCarregando(false);
-        return;
-      }
-      setNumeroAutorizacao(autorizacao.numero_autorizacao);
-
-      const { data: documentosSalvos, error: documentosError } = await supabase
-        .from("documentos")
-        .select("id, categoria, status, nome_arquivo, caminho_arquivo")
-        .eq("autorizacao_id", id);
-
-      if (documentosError) {
-        console.error("Erro ao carregar documentos:", documentosError);
-        setDocumentos([]);
-      } else {
-        setDocumentos((documentosSalvos ?? []).map(documento=>({...documento,url:null})));
-      }
-      setCarregando(false);
+      try {
+        const dados = await carregarDocumentosAutorizacao(supabase,id);
+        if (!ativo) return;
+        if (!dados) { router.replace('/'); return; }
+        setIdCarregado(id); setErroCarregamento('');
+        setNumeroAutorizacao(dados.numeroAutorizacao);
+        setDocumentos(dados.documentos.map(documento=>({...documento,url:null})));
+      } catch {
+        if (ativo) { setIdCarregado(id); setErroCarregamento('Não foi possível carregar os documentos. Tente novamente.'); }
+      } finally { if (ativo) setCarregando(false); }
     }
-    carregarDados();
-  }, [id, supabase]);
+    void carregarDados();
+    return () => { ativo = false; };
+  }, [id, supabase, router, recarregar]);
 
   const categoriasRecebidas = categorias.filter((c) =>
     documentos.some((d) => d.categoria === c.id && d.status === "recebido"),
@@ -119,22 +104,15 @@ export default function DocumentosAutorizacao() {
     (categoriasRecebidas / categorias.length) * 100,
   );
 
-  function statusCategoria(categoriaId: string) {
-    const documento = documentos.find((item) => item.categoria === categoriaId);
-
-    if (!documento) return "pendente";
-    if (documento.status === "recebido") return "recebido";
-    if (documento.status === "atencao") return "atencao";
-
-    return "pendente";
-  }
-
-  if (carregando)
-    return (
-      <main className="rbk-shell min-h-screen p-8 text-sm text-gray-500">
-        Carregando documentos...
-      </main>
-    );
+  const erroAtual = idCarregado === id ? erroCarregamento : '';
+  if (carregando || idCarregado !== id || erroAtual) return (
+    <main className="rbk-shell min-h-screen p-8 text-sm text-gray-600">
+      <h1 className="mb-4 text-xl font-bold text-gray-900">Documentos da autorização</h1>
+      <p role={erroAtual ? 'alert' : 'status'}>{erroAtual || 'Carregando documentos...'}</p>
+      {erroAtual && <button type="button" onClick={()=>{setCarregando(true);setErroCarregamento('');setRecarregar(n=>n+1);}} className="rbk-primary mt-4 rounded-xl px-4 py-3 font-bold">Tentar novamente</button>}
+      <Link href="/autorizacoes" className="mt-5 block font-bold text-red-600">Voltar para autorizações</Link>
+    </main>
+  );
 
   async function substituirDocumento(arquivo: File): Promise<boolean> {
     if (!documentoEmEdicao || !arquivoSubstituicao) return false;
