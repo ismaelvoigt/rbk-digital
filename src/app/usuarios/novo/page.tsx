@@ -99,18 +99,14 @@ export default function NovaFarmaciaPage() {
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
           <RbkBrand compact light />
-
-          <Link
-            href="/dashboard"
-            className="text-sm font-semibold text-gray-500 transition hover:text-red-600"
-          >
-            ← Voltar ao Dashboard
-          </Link>
         </div>
       </header>
 
       <div className="rbk-container py-8 sm:py-10">
         <div className="mb-8">
+          <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">
+            ← Voltar ao Dashboard
+          </Link>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-red-600">
             Administração
           </p>

@@ -40,10 +40,10 @@ export default function MonitoramentoPage() {
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
           <RbkBrand compact light />
-          <Link href="/dashboard" className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">← Voltar ao Dashboard</Link>
         </div>
       </header>
       <div className="rbk-container py-8 sm:py-10">
+        <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">← Voltar ao Dashboard</Link>
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-red-600">RBK Digital</p>
         <h1 className="mt-2 flex items-center gap-2 text-3xl font-bold text-gray-900">
           <svg

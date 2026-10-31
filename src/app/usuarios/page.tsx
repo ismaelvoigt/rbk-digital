@@ -260,9 +260,6 @@ export default function UsuariosPage() {
           <RbkBrand light />
 
           <nav aria-label="Navegação de farmácias" className="flex flex-wrap items-center justify-end gap-3">
-            <Link href="/dashboard" className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
-              ← Voltar ao Dashboard
-            </Link>
           <Link
             href="/usuarios/novo"
             className="rounded-xl rbk-primary px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
@@ -275,6 +272,9 @@ export default function UsuariosPage() {
 
       <div className="mx-auto max-w-7xl px-6 py-10">
         <div className="mb-8">
+          <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">
+            ← Voltar ao Dashboard
+          </Link>
           <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--rbk-red)]">
             Perfil do gestor
           </p>

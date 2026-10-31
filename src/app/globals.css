@@ -58,12 +58,115 @@ button, input, textarea { font: inherit; }
   z-index: 20;
 }
 
+.rbk-header:has(.rbk-header-search) { position: sticky; top: 0; }
+.rbk-topbar:has(.rbk-header-search) { position: relative; }
+
+.rbk-header-search {
+  position: absolute;
+  z-index: 25;
+  top: 50%;
+  left: 50%;
+  width: min(460px, 38vw);
+  transform: translate(-50%, -50%);
+  color: #1f2937;
+}
+.rbk-header-search-input-wrap {
+  display: flex;
+  height: 48px;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  background: #fff;
+  padding: 0 12px 0 15px;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, .12);
+}
+.rbk-header-search-input-wrap:focus-within {
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, .18), 0 5px 18px rgba(15, 23, 42, .12);
+}
+.rbk-header-search-glass { width: 21px; height: 21px; flex: none; color: #64748b; }
+.rbk-header-search-input-wrap input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #111827;
+  font-size: 14px;
+}
+.rbk-header-search-input-wrap input::placeholder { color: #64748b; opacity: 1; }
+.rbk-header-search-shortcut {
+  display: inline-flex;
+  flex: none;
+  gap: 3px;
+  border: 1px solid #e5e7eb;
+  border-radius: 7px;
+  background: #f8fafc;
+  padding: 4px 7px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1;
+}
+.rbk-header-search-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, .2);
+}
+.rbk-header-search-heading {
+  margin: 0;
+  padding: 17px 20px 10px;
+  color: #64748b !important;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.rbk-header-search-list { max-height: min(55vh, 420px); overflow-y: auto; margin: 0; padding: 0 12px; list-style: none; }
+.rbk-header-search-list li + li { border-top: 1px solid #eef0f3; }
+.rbk-header-search-result {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  gap: 13px;
+  border-radius: 10px;
+  padding: 10px 8px;
+  color: #111827 !important;
+  text-decoration: none !important;
+}
+.rbk-header-search-result:hover,
+.rbk-header-search-result.is-active { background: #f8fafc; }
+.rbk-header-search-icon { display: grid; width: 42px; height: 42px; flex: none; place-items: center; border-radius: 12px; background: #f3f4f6; color: #374151; }
+.rbk-header-search-icon svg { width: 23px; height: 23px; }
+.rbk-header-search-copy { display: grid; min-width: 0; gap: 3px; flex: 1; }
+.rbk-header-search-copy strong { overflow: hidden; color: #111827; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.rbk-header-search-copy > span { overflow: hidden; color: #64748b; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.rbk-header-search-arrow { flex: none; color: #64748b; font-size: 21px; }
+.rbk-header-search-empty { margin: 0; padding: 20px; color: #64748b !important; font-size: 14px; }
+.rbk-header-search-footer { display: flex; align-items: center; gap: 9px; border-top: 1px solid #eef0f3; padding: 12px 20px; color: #475569; font-size: 13px; }
+.rbk-header-search-footer svg { width: 18px; height: 18px; color: #64748b; }
+
 :is(.rbk-header, .rbk-topbar) :is(p, .aud-secure) { color: #e2e8f0; }
 :is(.rbk-header, .rbk-topbar) a:not(.bg-white):not(.rbk-primary):not(.rbk-secondary) { color: #f8fafc; }
 :is(.rbk-header, .rbk-topbar) a:not(.bg-white):not(.rbk-primary):not(.rbk-secondary):hover { color: #fff; text-decoration: underline; }
 :is(.rbk-header, .rbk-topbar) :is(a, button):focus-visible { outline: 3px solid #f4b400; outline-offset: 4px; }
 
 .rbk-container { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+
+@media (max-width: 760px) {
+  .rbk-header:has(.rbk-header-search),
+  .rbk-topbar:has(.rbk-header-search) { padding-bottom: 56px; }
+  .rbk-header-search { top: auto; bottom: 7px; left: 50%; width: calc(100% - 32px); transform: translateX(-50%); }
+  .rbk-header-search-input-wrap { height: 42px; }
+  .rbk-header-search-menu { max-height: calc(100vh - 120px); }
+  .rbk-header-search-list { max-height: calc(100vh - 230px); }
+}
 
 .rbk-card {
   border: 1px solid var(--rbk-border);

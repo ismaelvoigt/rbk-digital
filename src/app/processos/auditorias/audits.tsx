@@ -194,12 +194,6 @@ export default function Audits() {
             <span className="aud-secure">Gestor RBK · Processos</span>
           </div>
 
-          <Link
-            href="/dashboard"
-            className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-          >
-            ← Voltar ao Dashboard
-          </Link>
         </div>
       </header>
       <div className="aud-content">
@@ -207,6 +201,9 @@ export default function Audits() {
           <Link href="/dashboard">GESTOR RBK</Link> /{" "}
           <Link href="/processos/auditorias">AUDITORIAS PFPB</Link>
         </p>
+        <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">
+          ← Voltar ao Dashboard
+        </Link>
         <div className="aud-row">
           <div>
             <h1>

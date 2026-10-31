@@ -346,9 +346,11 @@ export default function AutorizacoesUsuario() {
           >
             ← Voltar para farmácias
           </Link>
-          <Link href="/dashboard" className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">← Voltar ao Dashboard</Link>
         </nav>
 
+        <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">
+          ← Voltar ao Dashboard
+        </Link>
         <div className="mb-10">
           <div className="text-sm font-bold uppercase tracking-[0.18em] text-red-600">
             Administração
