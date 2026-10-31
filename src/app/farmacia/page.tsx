@@ -6,6 +6,7 @@ import Link from "next/link";
 import ProximasCard from "../../components/proximas/ProximasCard";
 import { useEffect, useState } from "react";
 
+import { listarPaginas } from "../../lib/documentos/paginacao";
 import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
 
@@ -53,6 +54,7 @@ export default function FarmaciaPage() {
   const [perfil, setPerfil] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [carregando, setCarregando] = useState(true);
+  const [erroIndicadores,setErroIndicadores] = useState("");
   const [autorizacoesHoje, setAutorizacoesHoje] = useState(0);
   const [documentosHoje, setDocumentosHoje] = useState(0);
   const [pendencias, setPendencias] = useState(0);
@@ -61,7 +63,9 @@ export default function FarmaciaPage() {
   const [ultimaCompleta, setUltimaCompleta] = useState(false);
 
   useEffect(() => {
+    let ativo = true;
     async function carregarUsuario() {
+      try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -79,26 +83,18 @@ export default function FarmaciaPage() {
       const inicioHoje = new Date();
       inicioHoje.setHours(0, 0, 0, 0);
 
-      const { data: autorizacoesData } = await supabase
-        .from("autorizacoes")
-        .select("id, numero_autorizacao, cpf_cliente, created_at")
-        .eq("farm_id", profile.farm_id)
-        .order("created_at", { ascending: false });
-
-      const autorizacoes = (autorizacoesData ?? []) as AutorizacaoResumo[];
-
-      const ids = autorizacoes.map((item) => item.id);
-
-      let documentos: DocumentoResumo[] = [];
-
-      if (ids.length > 0) {
-        const { data: documentosData } = await supabase
-          .from("documentos")
-          .select("autorizacao_id, categoria, created_at")
-          .in("autorizacao_id", ids);
-
-        documentos = (documentosData ?? []) as DocumentoResumo[];
+      const autorizacoes = await listarPaginas<AutorizacaoResumo>((inicio,fim)=>supabase
+        .from('autorizacoes').select('id,numero_autorizacao,cpf_cliente,created_at')
+        .eq('farm_id',profile.farm_id).order('created_at',{ascending:false}).order('id').range(inicio,fim));
+      const ids = autorizacoes.map(item=>item.id);
+      const documentos:DocumentoResumo[] = [];
+      for (let inicio=0;inicio<ids.length;inicio+=100) {
+        const lote = await listarPaginas<DocumentoResumo>((de,ate)=>supabase.from('documentos')
+          .select('id,autorizacao_id,categoria,created_at').in('autorizacao_id',ids.slice(inicio,inicio+100))
+          .eq('status','recebido').order('id').range(de,ate));
+        documentos.push(...lote);
       }
+      if (!ativo) return;
 
       const hojeTimestamp = inicioHoje.getTime();
 
@@ -150,10 +146,13 @@ export default function FarmaciaPage() {
         );
       }
 
-      setCarregando(false);
+      } catch {
+        if (ativo) setErroIndicadores('Não foi possível carregar os indicadores. Você pode continuar pelo cadastro ou pela consulta.');
+      } finally { if (ativo) setCarregando(false); }
     }
 
-    carregarUsuario();
+    void carregarUsuario();
+    return () => { ativo = false; };
   }, [supabase]);
 
   async function sairDaConta() {
@@ -161,15 +160,6 @@ export default function FarmaciaPage() {
     router.push("/");
   }
 
-  if (carregando) {
-    return (
-      <main className="rbk-shell flex min-h-screen items-center justify-center">
-        <div className="text-sm text-gray-500">
-          Carregando painel...
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="rbk-shell min-h-screen">
@@ -262,7 +252,7 @@ export default function FarmaciaPage() {
               Consultar autorizações →
             </span>
           </Link>
-          {perfil !== "operador" && <Link href="/administracao" className="rbk-card rbk-card-hover group hidden p-6 lg:block">
+          {perfil && perfil !== "operador" && <Link href="/administracao" className="rbk-card rbk-card-hover group hidden p-6 lg:block">
             <div className="mb-5 flex items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19V5m0 14h16M8 15v-4m5 4V7m5 8v-6"/></svg></div>
               <h2 className="text-base font-bold text-gray-900">Administração</h2>
@@ -281,7 +271,9 @@ export default function FarmaciaPage() {
           </Link>
         </section>
 
-        <section className="mt-8">
+        {carregando && <p role="status" className="mt-8 text-sm text-gray-500">Carregando indicadores...</p>}
+        {erroIndicadores && <p role="alert" className="mt-8 text-sm text-amber-800">{erroIndicadores}</p>}
+        {!carregando && !erroIndicadores && <section className="mt-8">
           <div className="mb-4">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
               Visão rápida
@@ -353,7 +345,7 @@ export default function FarmaciaPage() {
               </Link>
             )}
           </div>
-        </section>
+        </section>}
       </div>
     </main>
   );

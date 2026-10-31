@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { enviarDocumento, type EstadoEnvio } from "../../lib/documentos/envio";
 import { dispararExtracao } from "../../lib/cupons/client";
 import { createClient } from "../../lib/supabase/client";
 
@@ -13,6 +14,8 @@ type Categoria =
 
 type DocumentUploadCardProps = {
   title: string;
+  disabled?: boolean;
+  estadoEnvio?: EstadoEnvio;
   optional?: boolean;
   accent?: "red" | "orange" | "green" | "blue" | "purple";
   status?: "pendente" | "recebido" | "atencao";
@@ -55,6 +58,8 @@ function nomeSeguro(nome: string) {
 
 export default function DocumentUploadCard({
   title,
+  disabled = false,
+  estadoEnvio,
   optional = false,
   accent = "red",
 status = "pendente",
@@ -77,6 +82,10 @@ numeroAutorizacao,
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
   const [leitura, setLeitura] = useState("");
+  const [confirmado, setConfirmado] = useState(false);
+  const ocupado = disabled || enviando;
+  const salvo = estadoEnvio === 'salvo' || confirmado || (!file && files.length === 0 && status === 'recebido');
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); },[preview]);
 
 function gerarNomeArquivo(
   numero: string,
@@ -109,6 +118,7 @@ const numeroFormatado = numero.trim();
     if (!selectedFile) return;
 
     setErro("");
+    setConfirmado(false);
 
     if (preview) {
       URL.revokeObjectURL(preview);
@@ -150,46 +160,13 @@ const numeroFormatado = numero.trim();
         return;
       }
 
-      const nomeArquivo = gerarNomeArquivo(
-  numeroAutorizacao || "sem_numero",
-  categoria,
-  selectedFile.name
-);
+      const documentoId = crypto.randomUUID();
+      const nomeArquivo = gerarNomeArquivo(numeroAutorizacao || 'sem_numero',categoria,selectedFile.name);
+      const caminho = `${user.id}/${autorizacaoId}/${categoria}-${documentoId}-${nomeSeguro(nomeArquivo)}`;
+      await enviarDocumento(supabase,{id:documentoId,autorizacaoId,categoria,caminho,nome:nomeArquivo,file:selectedFile});
+      setConfirmado(true);
+      void dispararExtracao(supabase,documentoId,categoria).then(setLeitura);
 
-const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSeguro(
-  nomeArquivo
-)}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("documentos")
-        .upload(caminho, selectedFile, {
-          upsert: false,
-          contentType:
-            selectedFile.type || "application/octet-stream",
-        });
-
-      if (uploadError) {
-        throw new Error(uploadError.message);
-      }
-
-      const { data: documentoNovo, error: documentoError } = await supabase
-        .from("documentos")
-        .insert({
-          autorizacao_id: autorizacaoId,
-          categoria,
-          nome_arquivo: nomeArquivo,
-          caminho_arquivo: caminho,
-          status: "recebido",
-        }).select("id").single();
-
-      if (documentoError) {
-        await supabase.storage
-          .from("documentos")
-          .remove([caminho]);
-
-        throw new Error(documentoError.message);
-      }
-      if (documentoNovo) setLeitura(await dispararExtracao(supabase, documentoNovo.id, categoria));
     } catch (error) {
       setErro(
         error instanceof Error
@@ -207,15 +184,14 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
   function handleFileChange(
     event: React.ChangeEvent<HTMLInputElement>
   ) {
+    if (ocupado) return;
     const selecionados = Array.from(event.target.files ?? []);
 
     if (multiple) {
       if (selecionados.length > 0) {
-        setFiles((atuais) => {
-          const novos = [...atuais, ...selecionados];
-          onFilesChange?.(novos);
-          return novos;
-        });
+        const novos = [...files,...selecionados];
+        setFiles(novos);
+        onFilesChange?.(novos);
       }
     } else {
       const selectedFile = selecionados[0];
@@ -229,11 +205,9 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
   }
 
   function removerArquivoMultiplo(index: number) {
-    setFiles((atuais) => {
-      const novos = atuais.filter((_, i) => i !== index);
-      onFilesChange?.(novos);
-      return novos;
-    });
+    const novos = files.filter((_,i)=>i!==index);
+    setFiles(novos);
+    onFilesChange?.(novos);
   }
 
   function removerArquivo() {
@@ -244,13 +218,14 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
     setFile(null);
     setPreview(null);
     setErro("");
+    setConfirmado(false);
     onFileChange?.(null);
   }
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
       {/* Cabeçalho */}
-      <div className="mb-5 flex items-start justify-between gap-4">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold ${accentClasses[accent]}`}
@@ -273,29 +248,27 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
 
         <span
           className={
-            "shrink-0 rounded-full px-3 py-1 text-xs font-semibold " +
-            ((multiple ? files.length > 0 : Boolean(file)) || status === "recebido"
+            "max-w-full self-start rounded-full px-3 py-1 text-xs font-semibold sm:shrink-0 " +
+            (estadoEnvio === 'falhou'
+              ? 'bg-red-50 text-red-700'
+              : salvo
               ? "bg-green-50 text-green-700"
               : status === "atencao"
                 ? "bg-orange-50 text-orange-700"
                 : optional
                   ? "bg-gray-100 text-gray-500"
-                  : "bg-red-50 text-red-600")
+                  : "bg-amber-50 text-amber-800")
           }
         >
-          {enviando
-            ? "Enviando..."
-            : multiple && files.length > 0
-              ? `✓ ${files.length} ${files.length === 1 ? "arquivo" : "arquivos"}`
-              : file
-                ? "✓ Anexado"
-              : status === "recebido"
-                ? "✓ Recebido"
-                : optional
-                  ? "Opcional"
-                  : status === "atencao"
-                    ? "Atenção"
-                    : "Pendente"}
+          {enviando || estadoEnvio === 'enviando'
+            ? 'Enviando e confirmando...'
+            : estadoEnvio === 'falhou'
+              ? 'Falhou — tente novamente'
+              : salvo
+                ? '✓ Salvo e confirmado'
+                : (multiple ? files.length > 0 : Boolean(file))
+                  ? 'Selecionado — ainda não salvo'
+                  : optional ? 'Opcional' : status === 'atencao' ? 'Atenção' : 'Pendente'}
         </span>
       </div>
 
@@ -305,7 +278,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
             <button
               type="button"
               onClick={() => cameraRef.current?.click()}
-              disabled={enviando}
+              disabled={ocupado}
               className="flex h-12 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="text-lg">📷</span>
@@ -315,7 +288,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
             <button
               type="button"
               onClick={() => galleryRef.current?.click()}
-              disabled={enviando}
+              disabled={ocupado}
               className="flex h-12 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg
@@ -354,6 +327,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
 
                   <button
                     type="button"
+                    disabled={ocupado}
                     onClick={() => removerArquivoMultiplo(index)}
                     className="shrink-0 text-xs font-bold text-red-600 hover:text-red-700"
                   >
@@ -376,7 +350,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
           <button
             type="button"
             onClick={() => cameraRef.current?.click()}
-            disabled={enviando}
+            disabled={ocupado}
             className="flex h-12 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span className="text-lg">📷</span>
@@ -386,7 +360,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
           <button
             type="button"
             onClick={() => galleryRef.current?.click()}
-            disabled={enviando}
+            disabled={ocupado}
             className="flex h-12 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <svg
@@ -410,7 +384,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
             <button
               type="button"
               onClick={onQrCodeClick}
-              disabled={enviando}
+              disabled={ocupado}
               className="flex h-12 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg
@@ -470,7 +444,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
             <button
               type="button"
               onClick={() => cameraRef.current?.click()}
-              disabled={enviando}
+              disabled={ocupado}
               className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Tirar outra foto
@@ -479,7 +453,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
             <button
               type="button"
               onClick={removerArquivo}
-              disabled={enviando}
+              disabled={ocupado}
               className="flex-1 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Remover
@@ -498,6 +472,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
       {/* Inputs invisíveis */}
       <input
         ref={cameraRef}
+        disabled={ocupado}
         type="file"
         accept="image/*"
         capture="environment"
@@ -508,6 +483,7 @@ const caminho = `${user.id}/${autorizacaoId}/${categoria}-${Date.now()}-${nomeSe
 
       <input
         ref={galleryRef}
+        disabled={ocupado}
         type="file"
         accept="image/*,.pdf"
         multiple={multiple}
