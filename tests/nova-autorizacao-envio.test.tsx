@@ -62,3 +62,11 @@ it('duplicidade de outra autorização informa o erro e libera correção do nú
  await fillAndAttach();authorizations.push({id:'other',numero_autorizacao:'111222333444555'});
  await submit();expect(host.textContent).toContain('Esta autorização já está cadastrada');expect(host.querySelector('fieldset')?.disabled).toBe(false);expect(rows.size).toBe(0);
 });
+it('cadastro sem CRM acompanha apenas os quatro documentos obrigatórios e não envia CRM',async()=>{
+ await act(async()=>root.render(<NovaAutorizacao/>));
+ expect(host.textContent).not.toContain('CRM');
+ expect(host.querySelector('[aria-label="Resumo do cadastro"]')?.textContent).toContain('0 de 4 documentos obrigatórios selecionados');
+ await fillAndAttach();
+ expect(host.querySelector('[aria-label="Resumo do cadastro"]')?.textContent).toContain('4 de 4 documentos obrigatórios selecionados');
+ await submit();expect(authorizations).toHaveLength(1);expect(authorizations[0]).not.toHaveProperty('crm');expect(authorizations[0]).not.toHaveProperty('crm_uf');
+});

@@ -14,6 +14,7 @@ type Categoria =
 
 type DocumentUploadCardProps = {
   title: string;
+  compactarAposSelecionar?: boolean;
   disabled?: boolean;
   estadoEnvio?: EstadoEnvio;
   optional?: boolean;
@@ -58,6 +59,7 @@ function nomeSeguro(nome: string) {
 
 export default function DocumentUploadCard({
   title,
+  compactarAposSelecionar = false,
   disabled = false,
   estadoEnvio,
   optional = false,
@@ -83,6 +85,9 @@ numeroAutorizacao,
   const [erro, setErro] = useState("");
   const [leitura, setLeitura] = useState("");
   const [confirmado, setConfirmado] = useState(false);
+  const [expandido,setExpandido] = useState(false);
+  const temArquivos = multiple ? files.length > 0 : Boolean(file);
+  const recolhido = compactarAposSelecionar && temArquivos && !expandido;
   const ocupado = disabled || enviando;
   const salvo = estadoEnvio === 'salvo' || confirmado || (!file && files.length === 0 && status === 'recebido');
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); },[preview]);
@@ -125,6 +130,7 @@ const numeroFormatado = numero.trim();
     }
 
     setFile(selectedFile);
+    setExpandido(false);
 
     if (selectedFile.type.startsWith("image/")) {
       setPreview(URL.createObjectURL(selectedFile));
@@ -191,6 +197,7 @@ const numeroFormatado = numero.trim();
       if (selecionados.length > 0) {
         const novos = [...files,...selecionados];
         setFiles(novos);
+        setExpandido(false);
         onFilesChange?.(novos);
       }
     } else {
@@ -272,9 +279,26 @@ const numeroFormatado = numero.trim();
         </span>
       </div>
 
-      {multiple ? (
+      {compactarAposSelecionar && temArquivos && !recolhido && (
+        <button type="button" aria-expanded="true" onClick={()=>setExpandido(false)} className="mb-3 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700">Recolher</button>
+      )}
+      {recolhido ? (
+        <div className="space-y-3">
+          <p className="truncate text-sm text-gray-600" title={multiple ? undefined : file?.name}>
+            {multiple ? `${files.length} ${files.length === 1 ? 'arquivo selecionado' : 'arquivos selecionados'}` : file?.name}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" aria-expanded="false" onClick={()=>setExpandido(true)} className="rounded-xl border border-gray-200 px-3 py-3 text-sm font-semibold text-gray-700">
+              {multiple ? 'Conferir arquivos' : 'Conferir arquivo'}
+            </button>
+            <button type="button" disabled={ocupado} onClick={()=>galleryRef.current?.click()} className="rounded-xl border border-gray-200 px-3 py-3 text-sm font-semibold text-gray-700 disabled:opacity-50">
+              {multiple ? 'Adicionar arquivos' : 'Substituir'}
+            </button>
+          </div>
+        </div>
+      ) : multiple ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className={`grid gap-3 ${compactarAposSelecionar ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2"}`}>
             <button
               type="button"
               onClick={() => cameraRef.current?.click()}
@@ -344,9 +368,7 @@ const numeroFormatado = numero.trim();
         </div>
       ) : !file ? (
         /* Estado sem arquivo */
-        <div className={`grid grid-cols-1 gap-3 ${
-          onQrCodeClick ? "sm:grid-cols-3" : "sm:grid-cols-2"
-        }`}>
+        <div className={`grid gap-3 ${compactarAposSelecionar ? 'grid-cols-2' : 'grid-cols-1'} ${onQrCodeClick ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
           <button
             type="button"
             onClick={() => cameraRef.current?.click()}
@@ -449,6 +471,7 @@ const numeroFormatado = numero.trim();
             >
               Tirar outra foto
             </button>
+            {compactarAposSelecionar && <button type="button" disabled={ocupado} onClick={()=>galleryRef.current?.click()} className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 disabled:opacity-50">Escolher outro arquivo</button>}
 
             <button
               type="button"

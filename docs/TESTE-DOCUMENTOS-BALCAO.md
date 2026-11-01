@@ -38,3 +38,7 @@ Sem migração de banco e sem persistência local de imagens. A fila de leitura 
 ## Atualização de desempenho
 
 O envio mantém no máximo dois uploads simultâneos, permitindo a confirmação de arquivos anteriores enquanto os próximos são enviados (até quatro documentos em processamento total). A tela documental consulta autorização e anexos em paralelo após validar a sessão. Em falha, oferece Tentar novamente; durante a espera, mantém um link de retorno. O teclado numérico também foi habilitado no número da autorização do cadastro novo.
+
+## Cadastro compacto sem CRM
+
+O cadastro de nova autorização usa CPF e número da autorização, sem pedir CRM/UF. Ao selecionar foto ou PDF, o card recolhe e mostra o nome do arquivo; Conferir abre a prévia, Substituir abre a galeria e Recolher mantém a seleção. Em Outros Documentos, conferir abre a lista e permite remover; Adicionar arquivos mantém os anteriores. O resumo acompanha quatro categorias obrigatórias; opcionais aparecem separados. Antes de salvar, o progresso significa selecionado, não armazenado. No envio, passa a indicar somente os arquivos confirmados.

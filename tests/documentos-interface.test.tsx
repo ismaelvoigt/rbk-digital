@@ -44,3 +44,27 @@ it('confirma sucesso somente depois da verificação do armazenamento',async()=>
  await act(async()=>root.render(<DocumentoSucesso/>));expect(host.textContent).not.toContain('Documento enviado com sucesso!');
  await act(async()=>finish({data:{size:5},error:null}));expect(host.textContent).toContain('Documento enviado com sucesso!');
 });
+it('card compacto recolhe a prévia após seleção e permite conferir sem perder o arquivo',async()=>{
+ let selected:File|null=null;
+ await act(async()=>root.render(<DocumentUploadCard title="Documento" compactarAposSelecionar onFileChange={file=>{selected=file}}/>));
+ const input=host.querySelector('input[type=file]') as HTMLInputElement;
+ const photo=new File(['abc'],'foto.jpg',{type:'image/jpeg'});
+ Object.defineProperty(input,'files',{value:[photo]});
+ await act(async()=>input.dispatchEvent(new Event('change',{bubbles:true})));
+ expect(host.querySelector('img')).toBeNull();expect(host.textContent).toContain('foto.jpg');expect(host.textContent).toContain('Selecionado — ainda não salvo');
+ await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Conferir arquivo')!.click());
+ expect(host.querySelector('img')).not.toBeNull();expect(selected).toBe(photo);
+ await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Recolher')!.click());expect(host.querySelector('img')).toBeNull();
+});
+it('card de opcionais compacto permite conferir e remover arquivos',async()=>{
+ let selected:File[]=[];
+ await act(async()=>root.render(<DocumentUploadCard title="Outros" compactarAposSelecionar multiple onFilesChange={files=>{selected=files}}/>));
+ const input=host.querySelector('input[type=file]') as HTMLInputElement;
+ Object.defineProperty(input,'files',{value:[new File(['abc'],'outro.pdf',{type:'application/pdf'})]});
+ await act(async()=>input.dispatchEvent(new Event('change',{bubbles:true})));
+ expect(host.textContent).not.toContain('Remover');
+ await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Conferir arquivos')!.click());
+ expect(host.textContent).toContain('outro.pdf');
+ await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Remover')!.click());expect(selected).toHaveLength(0);
+ expect(host.textContent).not.toContain('Conferir arquivos');
+});

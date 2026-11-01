@@ -9,8 +9,6 @@ import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
 import { enviarLote, type EnvioDocumento, type EstadoEnvio } from "../../lib/documentos/envio";
 import { mensagemErroAutorizacao } from "../../lib/documentos/mensagemErroAutorizacao";
-import CamposCrm from "../../components/relatorios/CamposCrm";
-import { normalizarCrm } from "../../lib/relatorios/filtros";
 const QrCodeScanner = dynamic(() => import('../../components/qrcode/QrCodeScanner'), {
   ssr:false,
   loading:()=> <p role="status" className="p-4 text-sm text-gray-600">Abrindo leitor de QR Code...</p>,
@@ -71,8 +69,6 @@ export default function NovaAutorizacao() {
   const [leitorQrAberto, setLeitorQrAberto] = useState(false);
   const [cpf, setCpf] = useState("");
   const [numero, setNumero] = useState("");
-  const [crm, setCrm] = useState("");
-  const [crmUf, setCrmUf] = useState("");
   const [arquivos, setArquivos] = useState<
     Record<Categoria, File | null>
   >({
@@ -95,6 +91,8 @@ export default function NovaAutorizacao() {
   const emEnvio = useRef(false);
   const tentativa = useRef<{id:string;userId:string;data:string;criada:boolean;envios:EnvioDocumento[]} | null>(null);
 
+  const obrigatoriosSelecionados = Object.entries(arquivos).filter(([categoria,file])=>categoria !== 'outros' && Boolean(file)).length;
+  const arquivosConfirmados = Object.values(estados).filter(estado=>estado === 'salvo').length;
   const temPendentes = !autorizacaoSalva && (iniciada || Object.values(arquivos).some(Boolean) || outrosArquivos.length > 0);
   useEffect(() => {
     if (!temPendentes) return;
@@ -125,11 +123,6 @@ export default function NovaAutorizacao() {
 
     setMensagem("");
     setErro("");
-
-    try { normalizarCrm(crm, crmUf); } catch (error) {
-      setErro(error instanceof Error ? error.message : "CRM inválido.");
-      return;
-    }
 
     if (!cpfValido(cpf)) {
       setErro("Informe um CPF válido.");
@@ -203,7 +196,6 @@ export default function NovaAutorizacao() {
             numero_autorizacao: numero.replace(/\D/g, ""),
             data_autorizacao: dataAutorizacao,
             cpf_cliente:cpf.replace(/\D/g,''),
-            ...(crm.trim() ? normalizarCrm(crm,crmUf) : {}),
             user_id: user.id,
           }).select('id').single();
           if (error || autorizacao?.id !== atual.id) throw error || new Error('Não foi possível confirmar a autorização.');
@@ -359,7 +351,6 @@ export default function NovaAutorizacao() {
                     setErro("");
                     setCpf("");
                     setNumero("");
-                    setCrm(""); setCrmUf("");
                     setArquivos({
                       documento_cliente: null,
                       receita_medica: null,
@@ -430,11 +421,12 @@ export default function NovaAutorizacao() {
         <form onSubmit={salvar} className="space-y-7">
             <fieldset disabled={iniciada || carregando} className="space-y-7">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
+              <label htmlFor="cadastro-cpf" className="mb-2 block text-sm font-semibold text-gray-700">
                 CPF do cliente *
               </label>
 
               <input
+                id="cadastro-cpf"
                 value={cpf}
                 onChange={(e) => setCpf(formatarCpf(e.target.value))}
                 inputMode="numeric"
@@ -446,11 +438,12 @@ export default function NovaAutorizacao() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
+              <label htmlFor="cadastro-numero" className="mb-2 block text-sm font-semibold text-gray-700">
                 Nº da autorização *
               </label>
 
               <input
+                id="cadastro-numero"
                 value={numero}
                 onChange={(e) => setNumero(formatarNumeroAutorizacao(e.target.value))}
                 inputMode="numeric"
@@ -458,11 +451,6 @@ export default function NovaAutorizacao() {
                 required
                 className="rbk-input"
               />
-            </div>
-
-            <div>
-              <CamposCrm prefixo="cadastro-crm" crm={crm} uf={crmUf} onChange={(numero, uf) => { setCrm(numero); setCrmUf(uf); }} />
-              <p className="mt-2 text-xs text-gray-500">Informe o CRM e a UF conforme a receita para localizar esta autorização nos relatórios.</p>
             </div>
 
             <div className="border-t border-gray-200 pt-7">
@@ -478,6 +466,7 @@ export default function NovaAutorizacao() {
 
               <div className="space-y-4">
                 <DocumentUploadCard
+                  compactarAposSelecionar
                   title="Doc. Cliente (RG/CNH)"
                   disabled={iniciada || carregando}
                   estadoEnvio={estadoCategoria("documento_cliente")}
@@ -488,6 +477,7 @@ export default function NovaAutorizacao() {
                 />
 
                 <DocumentUploadCard
+                  compactarAposSelecionar
                   title="Receita Médica"
                   disabled={iniciada || carregando}
                   estadoEnvio={estadoCategoria("receita_medica")}
@@ -499,6 +489,7 @@ export default function NovaAutorizacao() {
                 />
 
                 <DocumentUploadCard
+                  compactarAposSelecionar
                   title="Cupom Fiscal"
                   disabled={iniciada || carregando}
                   estadoEnvio={estadoCategoria("cupom_fiscal")}
@@ -509,6 +500,7 @@ export default function NovaAutorizacao() {
                 />
 
                 <DocumentUploadCard
+                  compactarAposSelecionar
                   title="Cupom Vinculado"
                   disabled={iniciada || carregando}
                   estadoEnvio={estadoCategoria("cupom_vinculado")}
@@ -519,6 +511,7 @@ export default function NovaAutorizacao() {
                 />
 
                 <DocumentUploadCard
+                  compactarAposSelecionar
                   title="Outros Documentos"
                   disabled={iniciada || carregando}
                   estadoEnvio={estadoCategoria("outros")}
@@ -532,8 +525,15 @@ export default function NovaAutorizacao() {
 
             </fieldset>
 
-            {iniciada && <p role="status" className="text-sm text-gray-600">{Object.values(estados).filter(e=>e==='salvo').length} de {itensEnvio.length} arquivos confirmados. Não feche esta tela enquanto houver pendentes.</p>}
-
+            <div role="region" aria-label="Resumo do cadastro" className="sticky bottom-0 z-20 -mx-5 border-t border-gray-200 bg-white px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(0,0,0,0.04)] sm:-mx-8 sm:px-8">
+              <p role="status" className="mb-2 text-sm font-semibold text-gray-800">
+                {iniciada ? `${arquivosConfirmados} de ${itensEnvio.length} arquivos confirmados` : `${obrigatoriosSelecionados} de 4 documentos obrigatórios selecionados`}
+              </p>
+              <progress aria-label={iniciada ? 'Arquivos confirmados' : 'Documentos obrigatórios selecionados'}
+                max={iniciada ? itensEnvio.length || 1 : 4} value={iniciada ? arquivosConfirmados : obrigatoriosSelecionados}
+                className="mb-2 h-2 w-full accent-red-600" />
+              {!iniciada && outrosArquivos.length > 0 && <p className="mb-2 text-xs text-gray-500">{outrosArquivos.length} {outrosArquivos.length === 1 ? 'arquivo opcional selecionado' : 'arquivos opcionais selecionados'}</p>}
+              <p className="mb-3 text-xs leading-5 text-gray-500">{iniciada ? 'Mantenha esta tela aberta enquanto houver arquivos pendentes.' : 'Selecionar não salva. Clique em Salvar autorização e aguarde a confirmação.'}</p>
             {erro && (
               <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
                 {erro}
@@ -555,6 +555,7 @@ export default function NovaAutorizacao() {
                 ? "Salvando autorização e documentos..."
                 : iniciada ? "Tentar novamente" : "Salvar autorização"}
             </button>
+            </div>
           </form>
         </section>
       </div>
