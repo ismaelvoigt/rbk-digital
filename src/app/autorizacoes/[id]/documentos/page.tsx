@@ -11,6 +11,7 @@ import BaixarAutorizacaoPdf from "../../../../components/documentos/BaixarAutori
 import { carregarDocumentosAutorizacao } from "../../../../lib/documentos/carregamento";
 import { substituirDocumentoConfirmado, type EnvioDocumento } from "../../../../lib/documentos/envio";
 import { resultadoConfirmacao } from "../../../../lib/documentos/fluxoConfirmacao";
+import { usePerfilAtual } from "../../../../lib/auth/usePerfilAtual";
 import { useNavegacaoPerfil } from "../../../../lib/auth/useNavegacaoPerfil";
 
 type Documento = {
@@ -52,6 +53,8 @@ function formatarNumeroAutorizacao(valor: string) {
 
 export default function DocumentosAutorizacao() {
   const supabase = createClient();
+  const perfil = usePerfilAtual();
+  const mostrarConferencia = perfil !== null && perfil !== 'operador';
 
   const params = useParams();
   const router = useRouter();
@@ -170,7 +173,7 @@ export default function DocumentosAutorizacao() {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <RbkBrand compact light />
+          <RbkBrand compact light perfil={perfil} />
           {navegacao && (<Link
             href={navegacao.href}
             className="text-sm font-bold text-gray-500 hover:text-red-600"
@@ -353,7 +356,7 @@ export default function DocumentosAutorizacao() {
         {erroVisualizacao && <p role="alert" className="mt-4 text-sm text-red-700">{erroVisualizacao}</p>}
         {arquivoSubstituicao && <p role="status" className="mt-4 text-sm text-amber-800">Novo arquivo selecionado — ainda não salvo. Clique em Confirmar e aguarde.</p>}
         {avisoLeitura && <p role="status" className="mt-4 text-sm text-gray-600">{avisoLeitura}</p>}
-        <ConferenciaCupons autorizacaoId={id} />
+        {mostrarConferencia && <ConferenciaCupons autorizacaoId={id} />}
         <div className="mt-8 space-y-3">
         {mensagemConfirmacao && (
           <div className="rounded-[13px] border border-green-100 bg-green-50 px-4 py-3 text-center text-sm font-semibold text-green-700">

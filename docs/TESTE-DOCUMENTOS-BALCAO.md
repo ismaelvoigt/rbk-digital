@@ -48,3 +48,5 @@ O cadastro de nova autorização usa CPF e número da autorização, sem pedir C
 Atendente/operador: no início aparecem os acessos de cadastro e consulta; Próximas Dispensações e Pendências não aparecem nem fazem a consulta do card de próximas. A busca de páginas e Ctrl+K ficam desativados em todo cabeçalho. No cadastro, retiradas as orientações introdutórias indicadas pelo responsável; progresso e estados de confirmação/erro continuam visíveis.
 
 Gerente e administrador da farmácia (incluindo perfil legado farmacia): próximos, pendências, pesquisa e orientações continuam disponíveis. A precedência de rbk_admins na busca é preservada. Esta etapa não revoga acesso a rotas nem altera permissões de dados.
+
+Na tela de documentos, o painel “Itens dos cupons • Vendas e Indicadores” só é montado após validar um perfil diferente de operador. Atendente não vê o painel, seus botões ou o link de Vendas, e não inicia as consultas/polling desse componente. Gerente, administrador da farmácia e perfil legado farmacia conservam a conferência. A leitura automática após envio permanece independente e não foi alterada; documentos e botão Confirmar continuam no fluxo do atendente.
