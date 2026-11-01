@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { filtroFarmacias, queryFarmacias } from "../../lib/usuarios/navegacao";
 import { createClient } from "../../lib/supabase/client";
+import {ExcluirUsuario} from "../../components/ExcluirUsuario";
 import { ExcluirFarmacia } from "../../components/ExcluirFarmacia";
 import { RbkBrand } from "../../components/RbkBrand";
 
@@ -493,6 +494,7 @@ export default function UsuariosPage() {
                         Ver autorizações
                       </Link>
 
+                      <ExcluirUsuario id={usuario.id} email={usuario.email} onDeleted={() => setUsuarios(atuais=>atuais.filter(item=>item.id!==usuario.id))}/>
                       <ExcluirFarmacia farmId={usuario.farm_id} onDeleted={() => setUsuarios((atuais) => atuais.filter((item) => item.farm_id !== usuario.farm_id))} />
 
                       {ativo && (

@@ -9,6 +9,7 @@ import { createClient } from "../../lib/supabase/client";
 type Usuario = {
   id: string;
   perfil: string;
+  tipo_convite?: string;
   status: string;
 };
 
@@ -81,7 +82,7 @@ export default function Dashboard() {
 
         const ativos = usuarios.filter(
           (usuario) =>
-            usuario.perfil === "farmacia" &&
+            (usuario.perfil === "farmacia" || usuario.tipo_convite === "farmacia") &&
             usuario.status === "active"
         ).length;
 
@@ -418,7 +419,7 @@ export default function Dashboard() {
               </p>
 
               <p className="mt-3 text-sm leading-6 text-gray-500">
-                Contas ativas com perfil de farmácia habilitadas no RBK Digital.
+                Responsáveis ativos por farmácias, incluindo acessos em teste.
               </p>
             </div>
           </div>

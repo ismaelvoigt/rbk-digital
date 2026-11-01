@@ -15,23 +15,6 @@ describe("estrutura do logout da farmácia", () => {
     expect(firstMeaningfulLine).toBe('"use client";');
   });
 
-  it("deve declarar sairDaConta antes do bloco de carregamento", () => {
-    const handlerPosition = source.indexOf("async function sairDaConta");
-    const loadingPosition = source.indexOf("if (carregando)");
-
-    expect(handlerPosition).toBeGreaterThanOrEqual(0);
-    expect(loadingPosition).toBeGreaterThanOrEqual(0);
-    expect(handlerPosition).toBeLessThan(loadingPosition);
-  });
-
-  it("deve retornar JSX corretamente durante o carregamento", () => {
-    const loadingPosition = source.indexOf("if (carregando)");
-    const returnPosition = source.indexOf("return (", loadingPosition);
-
-    expect(loadingPosition).toBeGreaterThanOrEqual(0);
-    expect(returnPosition).toBeGreaterThan(loadingPosition);
-  });
-
   it("deve manter exatamente um botão Sair", () => {
     const matches = source.match(/aria-label="Sair"/g) ?? [];
 

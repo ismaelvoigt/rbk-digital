@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 
 function listarTsx(dir: string): string[] {
   const arquivos: string[] = [];
@@ -23,15 +24,15 @@ describe("RBK Digital — padronização da logo", () => {
     const arquivos = listarTsx("src/app");
     const ocorrencias: string[] = [];
 
-    const regex =
-      /<Link\b[\s\S]{0,500}<RbkBrand\b[\s\S]{0,100}\/>[\s\S]{0,500}<\/Link>/g;
-
     for (const arquivo of arquivos) {
-      const conteudo = fs.readFileSync(arquivo, "utf-8");
-
-      if (regex.test(conteudo)) {
-        ocorrencias.push(arquivo);
+      const ast=ts.createSourceFile(arquivo,fs.readFileSync(arquivo,'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+      function visitar(node:ts.Node,dentroLink=false) {
+        const abertura=ts.isJsxElement(node) ? node.openingElement : ts.isJsxSelfClosingElement(node) ? node : null;
+        const tag=abertura?.tagName.getText(ast);
+        if (tag==='RbkBrand' && dentroLink) ocorrencias.push(arquivo);
+        ts.forEachChild(node,filho=>visitar(filho,dentroLink || tag==='Link'));
       }
+      visitar(ast);
     }
 
     expect(

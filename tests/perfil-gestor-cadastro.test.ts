@@ -19,12 +19,21 @@ describe("Perfil do gestor — cadastro de farmácias", () => {
       "utf8"
     );
 
-    for (const campo of ["telefone", "cidade", "estado"]) {
+    for (const campo of ["telefone"]) {
       const inputs = [...source.matchAll(/<input\b[\s\S]*?\/>/g)];
       const input = inputs.find(([texto]) => texto.includes(`id="${campo}"`));
       expect(input, campo).toBeDefined();
       expect(input?.[0]).toContain(`value={${campo}}`);
       expect(source).toContain(`htmlFor="${campo}"`);
+    }
+  });
+
+  it("compartilha seleção de UF e cidade entre cadastro e edição", async () => {
+    for (const path of ["src/app/usuarios/novo/page.tsx", "src/app/usuarios/[id]/editar/page.tsx"]) {
+      const source = await readFile(path, "utf8");
+      expect(source).toContain("<LocalidadeFields");
+      expect(source).toContain("estado={estado}");
+      expect(source).toContain("cidade={cidade}");
     }
   });
 

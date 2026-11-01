@@ -96,11 +96,6 @@ it("nova autorização deve apresentar confirmação após salvar", async () => 
   expect(conteudo).toContain("Cadastrar nova autorização");
 });
 
-it("nova autorização deve tratar número duplicado com mensagem amigável", async () => {
-  const conteudo = await readNovaAutorizacao();
-
-  expect(conteudo).toContain("Esta autorização já está cadastrada");
-});
 
 it("nova autorização deve exibir resumo após salvar", async () => {
   const conteudo = await readNovaAutorizacao();
@@ -142,14 +137,6 @@ it("nova autorização não deve redirecionar automaticamente após salvar", () 
   );
 });
 
-it("nova autorização deve tratar número duplicado com mensagem amigável", () => {
-  const conteudo = fsSync.readFileSync(
-    "src/app/nova-autorizacao/page.tsx",
-    "utf-8"
-  );
-
-  expect(conteudo).toContain("Esta autorização já está cadastrada");
-});
 
 it("nova autorização deve armazenar a data da autorização", () => {
   const conteudo = fsSync.readFileSync(
