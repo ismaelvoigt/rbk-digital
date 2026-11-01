@@ -23,12 +23,15 @@
 - [x] Migração: plano legado completo, novo armazenamento, ações RBK e exclusão atômica sem arquivos.
 - [x] Convite inicial e lista: responsável operador marcado, preservação dos existentes.
 - [x] Interface: promoção e plano separados; exclusão com confirmação por e-mail; menus adequados ao plano.
-- [ ] Verificar testes, tipos, build e revisão; aplicar somente banco de desenvolvimento e publicar preview.
+- [x] Verificar testes, tipos, build e revisão; aplicar somente banco de desenvolvimento e publicar preview.
 
 ## Ledger
 - Decisão: executar neste ramo de desenvolvimento já utilizado, mantendo arquivos duplicados preexistentes fora dos commits.
 - Decisão: vínculos adicionais bloqueiam exclusão, para evitar cascata destrutiva; histórico de criação de documentos também bloqueia mesmo após remoção do arquivo.
 
-- Verificação: 626 testes aprovados, 4 integrações ignoradas, 3 falhas preexistentes por private/ficha-template.xlsx ausente. Tipos e build aprovados; lint sem erros (avisos antigos). Revisão independente concluída e correções cobertas por regressões.
+- Verificação: 627 testes aprovados, 4 integrações ignoradas, 3 falhas preexistentes por private/ficha-template.xlsx ausente. Tipos e build aprovados; lint sem erros (avisos antigos). Revisão independente concluída e correções cobertas por regressões.
 - Banco desenvolvimento ympeqcycjadvvumanmwm atualizado; antes/depois: 2 usuários, 1 farmácia, 12 documentos; zero exclusões.
 - Requisito do teste do usuário: criar administrador RBK separado; ambiente atual tem zero RBK ativos. E-mail solicitado, sem alterar contas de atendente.
+
+- Acesso RBK separado criado a pedido do usuário; login e autorização administrativa confirmados no desenvolvimento. Sem envio de convites a terceiros.
+- Conferência visual do preview confirmou entrada administrativa e texto do convite. Resumo do gestor ajustado para contar responsáveis em teste e promovidos; teste de interface red/green.

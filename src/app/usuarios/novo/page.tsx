@@ -332,7 +332,7 @@ export default function NovaFarmaciaPage() {
                 </p>
 
                 <p className="mt-1 text-sm font-semibold text-gray-700">
-                  Farmácia
+                  Atendente — teste inicial
                 </p>
               </div>
 
