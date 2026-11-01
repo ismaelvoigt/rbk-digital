@@ -1,4 +1,5 @@
 "use client";
+import {nomeInicialFarmacia} from "../../lib/usuarios/nomeInicial";
 
 import { useRouter } from "next/navigation";
 
@@ -52,7 +53,8 @@ export default function FarmaciaPage() {
   const supabase = createClient();
 
   const [perfil, setPerfil] = useState<string | null>(null);
-  const mostrarAcompanhamento = ['farmacia','administrador_farmacia','gerente_farmacia'].includes(perfil ?? '');
+  const [farmInfo,setFarmInfo]=useState<{nome_fantasia:string|null;razao_social:string|null;plano:string}|null>(null);
+  const mostrarAcompanhamento = farmInfo?.plano === 'completo' && ['farmacia','administrador_farmacia','gerente_farmacia'].includes(perfil ?? '');
   const [email, setEmail] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [erroIndicadores,setErroIndicadores] = useState("");
@@ -79,7 +81,10 @@ export default function FarmaciaPage() {
       setEmail(user.email ?? "");
       const {data: profile} = await supabase.from("users").select("perfil,farm_id,status").eq("id",user.id).maybeSingle();
       if (!profile?.farm_id || profile.status !== "active") { window.location.href="/"; return; }
+      const farm = await supabase.from('farms').select('nome_fantasia,razao_social,plano').eq('id',profile.farm_id).maybeSingle();
+      if (!ativo) return;
       setPerfil(profile.perfil);
+      if (!farm.error) setFarmInfo(farm.data);
 
       const inicioHoje = new Date();
       inicioHoje.setHours(0, 0, 0, 0);
@@ -198,7 +203,7 @@ export default function FarmaciaPage() {
           </p>
 
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-            RBK Digital
+            {nomeInicialFarmacia(farmInfo)}
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
@@ -253,7 +258,7 @@ export default function FarmaciaPage() {
               Consultar autorizações →
             </span>
           </Link>
-          {perfil && perfil !== "operador" && <Link href="/administracao" className="rbk-card rbk-card-hover group hidden p-6 lg:block">
+          {mostrarAcompanhamento && <Link href="/administracao" className="rbk-card rbk-card-hover group hidden p-6 lg:block">
             <div className="mb-5 flex items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19V5m0 14h16M8 15v-4m5 4V7m5 8v-6"/></svg></div>
               <h2 className="text-base font-bold text-gray-900">Administração</h2>

@@ -30,7 +30,7 @@ it.each(['operador','gerente_farmacia','administrador_farmacia','farmacia'])('co
   consultas.push(table);
   const b={select:()=>b,eq:()=>b,in:()=>b,order:()=>b,
    single:async()=>({data:{numero_autorizacao:'123'},error:null}),
-   maybeSingle:async()=>({data:table==='users'?{perfil,status:'active'}:null,error:null}),
+   maybeSingle:async()=>({data:table==='users'?{perfil,status:'active',farm_id:'farm'}:table==='farms'?{plano:'completo'}:null,error:null}),
    then:(resolve:(value:unknown)=>unknown)=>Promise.resolve({data:[],error:null}).then(resolve)};
   return b;
  }});

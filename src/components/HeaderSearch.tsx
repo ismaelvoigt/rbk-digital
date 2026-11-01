@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import {useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent} from 'react';
 import type {RbkRole} from '../lib/auth/rbac';
+import {usePlanoGestao} from '../lib/auth/usePlanoGestao';
+import {getAccessDecision} from '../lib/auth/accessPolicy';
 import {usePerfilAtual} from '../lib/auth/usePerfilAtual';
 import {filterSearchPages} from '../lib/navigation/search';
 
@@ -22,13 +24,14 @@ function ResultIcon({category}: {category: string}) {
 
 export default function HeaderSearch({perfil}:{perfil?:RbkRole | null}) {
   const role = usePerfilAtual(perfil);
+  const gestao = usePlanoGestao(role);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultRefs = useRef<(HTMLAnchorElement | null)[]>([]);
-  const results = useMemo(() => filterSearchPages(query, role), [query, role]);
+  const results = useMemo(() => filterSearchPages(query, role).filter(page=>getAccessDecision({authenticated:true,perfil:role,pathname:page.href,plano:gestao?'completo':'armazenamento'}).allowed), [query, role, gestao]);
 
   useEffect(() => {
     if (!role || role === 'operador') return;

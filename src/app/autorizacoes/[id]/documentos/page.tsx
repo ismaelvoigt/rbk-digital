@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import {usePlanoGestao} from "../../../../lib/auth/usePlanoGestao";
 import ConferenciaCupons from "../../../../components/cupons/ConferenciaCupons";
 import { dispararExtracao } from "../../../../lib/cupons/client";
 import { useEffect, useRef, useState } from "react";
@@ -54,7 +55,7 @@ function formatarNumeroAutorizacao(valor: string) {
 export default function DocumentosAutorizacao() {
   const supabase = createClient();
   const perfil = usePerfilAtual();
-  const mostrarConferencia = perfil !== null && perfil !== 'operador';
+  const mostrarConferencia = usePlanoGestao(perfil);
 
   const params = useParams();
   const router = useRouter();

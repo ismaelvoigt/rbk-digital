@@ -33,6 +33,7 @@ beforeEach(()=>{
   const args=init?.body?JSON.parse(String(init.body)):{};calls.push({name,args});
   let data:unknown=[];
   if(name==='users')data={perfil:role,status:'active',farm_id:farms[0].id};
+  if(name==='farms')data={...farms[0],plano:'completo'};
   if(name==='rbk_admins')data=null;
   if(name==='modulos_farmacias'){
    const q=String(args.p_busca||'').toLowerCase();

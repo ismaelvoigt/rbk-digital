@@ -1,5 +1,6 @@
 "use client";
 
+import {AcessoFarmacia} from "../../../../components/AcessoFarmacia";
 import Link from "next/link";
 import { formatTelefone, normalizeTelefone } from "../../../../lib/cadastro/telefone";
 import { useRetornoFarmacias } from "../../../../lib/usuarios/useRetornoFarmacias";
@@ -24,6 +25,7 @@ type Cadastro = {
         cidade: string | null;
         estado: string | null;
         status: string;
+        plano: string;
       }
     | null;
 };
@@ -341,6 +343,8 @@ export default function EditarCadastroFarmaciaPage() {
             {sucesso}
           </div>
         )}
+
+        {cadastro && <AcessoFarmacia id={cadastro.id} perfil={cadastro.perfil} plano={cadastro.farms?.plano ?? "armazenamento"}/>}
 
         <form
           onSubmit={salvar}

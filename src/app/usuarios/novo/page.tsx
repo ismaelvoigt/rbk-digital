@@ -356,7 +356,7 @@ export default function NovaFarmaciaPage() {
                 Ao concluir o cadastro, a farmácia será
                 registrada no RBK Digital e o responsável
                 receberá um convite por e-mail para criar
-                sua senha e acessar o sistema.
+                sua senha e testar o armazenamento de documentos com o perfil de atendente. Você poderá promovê-lo depois a administrador da farmácia. Os módulos de gestão serão liberados separadamente por plano.
               </p>
             </div>
 
