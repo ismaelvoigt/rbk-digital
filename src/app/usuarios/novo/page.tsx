@@ -1,5 +1,6 @@
 "use client";
 
+import {LocalidadeFields} from "../../../components/LocalidadeFields";
 import Link from "next/link";
 import { formatTelefone } from "../../../lib/cadastro/telefone";
 import { formatCnpj, normalizeCnpj } from "../../../lib/auditoria/cnpj";
@@ -257,40 +258,7 @@ export default function NovaFarmaciaPage() {
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="cidade"
-                className="mb-2 block text-sm font-semibold text-gray-700"
-              >
-                Cidade
-              </label>
-              <input
-                id="cidade"
-                type="text"
-                value={cidade}
-                onChange={(event) => setCidade(event.target.value)}
-                disabled={enviando}
-                className="rbk-input"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="estado"
-                className="mb-2 block text-sm font-semibold text-gray-700"
-              >
-                Estado
-              </label>
-              <input
-                id="estado"
-                type="text"
-                value={estado}
-                onChange={(event) => setEstado(event.target.value.toUpperCase())}
-                maxLength={2}
-                disabled={enviando}
-                className="rbk-input"
-              />
-            </div>
+            <LocalidadeFields estado={estado} cidade={cidade} onEstadoChange={setEstado} onCidadeChange={setCidade} disabled={enviando}/>
 
             <div className="border-t border-gray-100 pt-7">
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-red-600">
