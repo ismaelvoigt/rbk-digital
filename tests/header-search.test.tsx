@@ -93,3 +93,10 @@ describe('pesquisa no cabeçalho',()=>{
   expect(host.querySelector('a[href="/usuarios/novo"]')).not.toBeNull();
  });
 });
+it('não exibe nem abre pesquisa para atendente mesmo com Ctrl+K',async()=>{
+ authState.perfil='operador';
+ await act(async()=>root.render(<HeaderSearch/>));
+ expect(host.querySelector('input[type="search"]')).toBeNull();
+ await act(async()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true})));
+ expect(host.querySelector('[aria-label="Resultados da pesquisa"]')).toBeNull();
+});

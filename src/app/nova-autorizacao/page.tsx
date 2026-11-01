@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { dispararExtracao } from "../../lib/cupons/client";
 import DocumentUploadCard from "../../components/documentos/DocumentUploadCard";
 import { createClient } from "../../lib/supabase/client";
+import { usePerfilAtual } from "../../lib/auth/usePerfilAtual";
 import { RbkBrand } from "../../components/RbkBrand";
 import { enviarLote, type EnvioDocumento, type EstadoEnvio } from "../../lib/documentos/envio";
 import { mensagemErroAutorizacao } from "../../lib/documentos/mensagemErroAutorizacao";
@@ -65,6 +66,8 @@ function formatarNumeroAutorizacao(valor: string) {
 
 export default function NovaAutorizacao() {
   const supabase = createClient();
+  const perfil = usePerfilAtual();
+  const mostrarOrientacoes = perfil !== null && perfil !== 'operador';
 
   const [leitorQrAberto, setLeitorQrAberto] = useState(false);
   const [cpf, setCpf] = useState("");
@@ -252,7 +255,7 @@ export default function NovaAutorizacao() {
       <main className="rbk-shell min-h-screen">
         <header className="rbk-header">
           <div className="rbk-container flex min-h-[76px] items-center justify-between">
-            <RbkBrand compact light />
+            <RbkBrand compact light perfil={perfil} />
 
             <Link
               href="/farmacia"
@@ -376,7 +379,7 @@ export default function NovaAutorizacao() {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <RbkBrand compact light />
+          <RbkBrand compact light perfil={perfil} />
           <Link
             href="/farmacia"
             onClick={(event) => { if (temPendentes && !window.confirm('Há arquivos pendentes nesta tela. Sair perde a seleção desses arquivos. Deseja sair?')) event.preventDefault(); }}
@@ -411,9 +414,9 @@ export default function NovaAutorizacao() {
             <span>Nova autorização</span>
           </h1>
 
-          <p className="mt-2 text-sm leading-6 text-gray-500">
+          {mostrarOrientacoes && <p className="mt-2 text-sm leading-6 text-gray-500">
             Informe o CPF, o número da autorização e anexe os documentos.
-          </p>
+          </p>}
         </div>
 
         <section className="rbk-card p-5 sm:p-8">
@@ -459,9 +462,9 @@ export default function NovaAutorizacao() {
                   Anexar por tipo de documento
                 </h2>
 
-                <p className="mt-1 text-sm text-gray-500">
+                {mostrarOrientacoes && <p className="mt-1 text-sm text-gray-500">
                   As fotos ficam selecionadas nesta tela até você clicar em Salvar autorização. Aguarde a confirmação de cada arquivo antes de sair.
-                </p>
+                </p>}
               </div>
 
               <div className="space-y-4">
@@ -533,7 +536,7 @@ export default function NovaAutorizacao() {
                 max={iniciada ? itensEnvio.length || 1 : 4} value={iniciada ? arquivosConfirmados : obrigatoriosSelecionados}
                 className="mb-2 h-2 w-full accent-red-600" />
               {!iniciada && outrosArquivos.length > 0 && <p className="mb-2 text-xs text-gray-500">{outrosArquivos.length} {outrosArquivos.length === 1 ? 'arquivo opcional selecionado' : 'arquivos opcionais selecionados'}</p>}
-              <p className="mb-3 text-xs leading-5 text-gray-500">{iniciada ? 'Mantenha esta tela aberta enquanto houver arquivos pendentes.' : 'Selecionar não salva. Clique em Salvar autorização e aguarde a confirmação.'}</p>
+              {(iniciada || mostrarOrientacoes) && <p className="mb-3 text-xs leading-5 text-gray-500">{iniciada ? 'Mantenha esta tela aberta enquanto houver arquivos pendentes.' : 'Selecionar não salva. Clique em Salvar autorização e aguarde a confirmação.'}</p>}
             {erro && (
               <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
                 {erro}

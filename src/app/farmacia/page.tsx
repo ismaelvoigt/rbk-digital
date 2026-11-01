@@ -52,6 +52,7 @@ export default function FarmaciaPage() {
   const supabase = createClient();
 
   const [perfil, setPerfil] = useState<string | null>(null);
+  const mostrarAcompanhamento = ['farmacia','administrador_farmacia','gerente_farmacia'].includes(perfil ?? '');
   const [email, setEmail] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [erroIndicadores,setErroIndicadores] = useState("");
@@ -206,7 +207,7 @@ export default function FarmaciaPage() {
         </div>
 
         <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <ProximasCard/>
+          {mostrarAcompanhamento && <ProximasCard/>}
           <Link
             href="/nova-autorizacao"
             className="rbk-card rbk-card-hover group p-6"
@@ -261,14 +262,14 @@ export default function FarmaciaPage() {
             <span className="mt-5 inline-block text-sm font-bold text-red-600">Abrir Administração →</span>
           </Link>}
           {["farmacia","administrador_farmacia"].includes(perfil ?? "") && <Link href="/equipe" className="rbk-card rbk-card-hover group p-6"><div className="mb-5 flex items-center gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="3"/><path d="M7 21v-2a5 5 0 0 1 10 0v2M18 4.7a2.5 2.5 0 0 1 0 4.6M20 20v-2a4 4 0 0 0-2.5-3.7M6 4.7a2.5 2.5 0 0 0 0 4.6M4 20v-2a4 4 0 0 1 2.5-3.7"/></svg></div><h2 className="text-base font-bold text-gray-900">Equipe</h2></div><p className="text-sm leading-6 text-gray-500">Convide funcionários e gerencie os acessos da sua farmácia.</p><span className="mt-5 inline-block text-sm font-bold text-red-600">Gerenciar equipe →</span></Link>}
-          <Link href="/pendencias" className="rbk-card rbk-card-hover group p-6">
+          {mostrarAcompanhamento && <Link href="/pendencias" className="rbk-card rbk-card-hover group p-6">
             <div className="mb-5 flex items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-xl font-bold text-amber-700">!</div>
               <h2 className="text-base font-bold text-gray-900">Pendências</h2>
             </div>
             <p className="text-sm leading-6 text-gray-500">Confira os documentos que precisam de atenção.</p>
             <span className="mt-5 inline-block text-sm font-bold text-red-600">Conferir pendências →</span>
-          </Link>
+          </Link>}
         </section>
 
         {carregando && <p role="status" className="mt-8 text-sm text-gray-500">Carregando indicadores...</p>}

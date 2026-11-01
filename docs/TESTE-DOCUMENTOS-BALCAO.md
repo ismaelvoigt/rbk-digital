@@ -42,3 +42,9 @@ O envio mantém no máximo dois uploads simultâneos, permitindo a confirmação
 ## Cadastro compacto sem CRM
 
 O cadastro de nova autorização usa CPF e número da autorização, sem pedir CRM/UF. Ao selecionar foto ou PDF, o card recolhe e mostra o nome do arquivo; Conferir abre a prévia, Substituir abre a galeria e Recolher mantém a seleção. Em Outros Documentos, conferir abre a lista e permite remover; Adicionar arquivos mantém os anteriores. O resumo acompanha quatro categorias obrigatórias; opcionais aparecem separados. Antes de salvar, o progresso significa selecionado, não armazenado. No envio, passa a indicar somente os arquivos confirmados.
+
+## Interface por perfil
+
+Atendente/operador: no início aparecem os acessos de cadastro e consulta; Próximas Dispensações e Pendências não aparecem nem fazem a consulta do card de próximas. A busca de páginas e Ctrl+K ficam desativados em todo cabeçalho. No cadastro, retiradas as orientações introdutórias indicadas pelo responsável; progresso e estados de confirmação/erro continuam visíveis.
+
+Gerente e administrador da farmácia (incluindo perfil legado farmacia): próximos, pendências, pesquisa e orientações continuam disponíveis. A precedência de rbk_admins na busca é preservada. Esta etapa não revoga acesso a rotas nem altera permissões de dados.

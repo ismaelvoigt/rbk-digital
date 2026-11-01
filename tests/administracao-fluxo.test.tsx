@@ -105,5 +105,5 @@ it.each([
  expect(!!host.querySelector('a[href="/administracao"]')).toBe(administracao);
  expect(!!host.querySelector('a[href="/equipe"]')).toBe(equipe);
  expect(!!host.querySelector('a[href="/nova-autorizacao"]')).toBe(true);
- expect(!!host.querySelector('a[href="/pendencias"]')).toBe(true);
+ expect(!!host.querySelector('a[href="/pendencias"]')).toBe(perfil !== 'operador');
 });

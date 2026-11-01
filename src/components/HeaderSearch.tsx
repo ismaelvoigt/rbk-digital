@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import {useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent} from 'react';
-import {resolveRole, type RbkRole} from '../lib/auth/rbac';
+import type {RbkRole} from '../lib/auth/rbac';
+import {usePerfilAtual} from '../lib/auth/usePerfilAtual';
 import {filterSearchPages} from '../lib/navigation/search';
-import {createClient} from '../lib/supabase/client';
 
 function ResultIcon({category}: {category: string}) {
   let icon = <><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8l-5-5H8z"/><path d="M14 3v6h6M8 13h8M8 17h8"/></>;
@@ -20,8 +20,8 @@ function ResultIcon({category}: {category: string}) {
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>;
 }
 
-export default function HeaderSearch() {
-  const [role, setRole] = useState<RbkRole | null>(null);
+export default function HeaderSearch({perfil}:{perfil?:RbkRole | null}) {
+  const role = usePerfilAtual(perfil);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -31,28 +31,7 @@ export default function HeaderSearch() {
   const results = useMemo(() => filterSearchPages(query, role), [query, role]);
 
   useEffect(() => {
-    let active = true;
-    async function loadRole() {
-      const client = createClient();
-      const {data: {user}} = await client.auth.getUser();
-      if (!user) return;
-      const [profile, admin] = await Promise.all([
-        client.from('users').select('perfil,status').eq('id', user.id).maybeSingle(),
-        client.from('rbk_admins').select('user_id').eq('user_id', user.id).eq('ativo', true).maybeSingle(),
-      ]);
-      if (!active || admin.error) return;
-      if (admin.data) {
-        setRole(resolveRole(profile.data?.perfil ?? null, true));
-        return;
-      }
-      if (profile.error || profile.data?.status !== 'active') return;
-      setRole(resolveRole(profile.data.perfil, false));
-    }
-    void loadRole().catch(() => {});
-    return () => { active = false; };
-  }, []);
-
-  useEffect(() => {
+    if (!role || role === 'operador') return;
     function handleKeyDown(event: globalThis.KeyboardEvent) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -70,7 +49,7 @@ export default function HeaderSearch() {
       window.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('pointerdown', handlePointerDown);
     };
-  }, []);
+  }, [role]);
 
   function handleInputKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Escape') {
@@ -91,6 +70,8 @@ export default function HeaderSearch() {
       resultRefs.current[activeIndex]?.click();
     }
   }
+
+  if (!role || role === 'operador') return null;
 
   return (
     <div className="rbk-header-search" ref={wrapperRef}>

@@ -1,14 +1,17 @@
 import Image from "next/image";
 import HeaderSearch from './HeaderSearch';
+import type {RbkRole} from '../lib/auth/rbac';
 
 export function RbkBrand({
   compact = false,
   light = false,
   search = true,
+  perfil,
 }: {
   compact?: boolean;
   light?: boolean;
   search?: boolean;
+  perfil?: RbkRole | null;
 }) {
   return (
     <>
@@ -29,7 +32,7 @@ export function RbkBrand({
           className="object-contain object-center"
         />
       </div>
-      {search && <HeaderSearch />}
+      {search && <HeaderSearch perfil={perfil} />}
     </>
   );
 }
