@@ -56,10 +56,11 @@ export default function FarmMonitoringPage() {
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
           <RbkBrand compact light />
-          <nav className="flex flex-wrap gap-4"><Link href="/monitoramento" className="text-sm font-bold text-gray-600">← Monitoramento</Link><Link href="/dashboard" className="text-sm font-bold text-gray-600">← Voltar ao Dashboard</Link></nav>
+          <Link href="/monitoramento" className="text-sm font-bold text-gray-600">← Monitoramento</Link>
         </div>
       </header>
       <div className="rbk-container py-8 sm:py-10">
+        <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">← Voltar ao Dashboard</Link>
         {loading && <p className="text-sm text-gray-600">Carregando farmácia...</p>}
         {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
         {farm && !error && <>

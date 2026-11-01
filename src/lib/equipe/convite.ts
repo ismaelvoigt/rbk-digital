@@ -1,3 +1,4 @@
+import { publicOrigin } from "../config/ambiente";
 export type PerfilEquipe='administrador_farmacia'|'gerente_farmacia'|'operador';
 export type FuncionarioInput={nome:string;email:string;perfil:PerfilEquipe;status:'active'|'inactive'};
 export type ContextoEquipe={farmId:string;cnpj:string;nome:string;actorId:string};
@@ -18,7 +19,7 @@ export async function convidarFuncionario(input:FuncionarioInput,context:Context
 }) {
  const invitation=await deps.generate({nome:input.nome,farmacia_id:context.farmId,cnpj:context.cnpj,perfil:input.perfil,tipo_convite:'funcionario'});
  await deps.register(invitation.id);
- const link=new URL('https://rbk-digital.vercel.app/primeiro-acesso');
+ const link=new URL(`${publicOrigin()}/primeiro-acesso`);
  link.searchParams.set('type','invite');link.searchParams.set('token_hash',invitation.hash);
  await deps.send(link.toString());
  await deps.markSent(invitation.id);

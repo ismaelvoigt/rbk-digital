@@ -85,7 +85,7 @@ export async function updateSession(request: NextRequest) {
     pathname === "/redefinir-senha" ||
     pathname === "/manifest.webmanifest" ||
     // A rota administrativa valida seu próprio Authorization Bearer.
-    pathname === "/api/equipe" || pathname === "/api/usuarios" || pathname === "/api/usuarios/exclusao" ||
+    pathname === "/api/equipe" || pathname === "/api/usuarios" || pathname === "/api/usuarios/exclusao" || pathname === "/api/usuarios/acesso" || pathname === "/api/usuarios/remover" ||
     pathname === "/api/processos" || pathname.startsWith("/api/processos/") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon")
@@ -113,7 +113,7 @@ export async function updateSession(request: NextRequest) {
 
   const { data: usuario, error } = await admin
     .from("users")
-    .select("id, perfil, status")
+    .select("id, perfil, status, farm_id")
     .eq("id", claims.sub)
     .maybeSingle();
 
@@ -174,10 +174,15 @@ export async function updateSession(request: NextRequest) {
   /*
    * Aplica a política centralizada.
    */
+  const isRbk = Boolean(administrador) || usuario.perfil === 'gestor_rbk';
+  const farm = !isRbk && usuario.farm_id
+    ? await admin.from('farms').select('plano').eq('id',usuario.farm_id).maybeSingle()
+    : null;
   const decision = getAccessDecision({
     authenticated: true,
     perfil: resolveRole(usuario.perfil, Boolean(administrador)),
     pathname,
+    plano: isRbk ? undefined : farm?.data?.plano ?? null,
   });
 
   if (!decision.allowed) {

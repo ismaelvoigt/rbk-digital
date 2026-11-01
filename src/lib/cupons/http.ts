@@ -83,7 +83,7 @@ export async function autorizar(req: Request, documentoId: string) {
   const [perfil, admin, doc] = await Promise.all([
     client
       .from("users")
-      .select("perfil,status")
+      .select("perfil,status,farm_id")
       .eq("id", auth.data.user.id)
       .maybeSingle(),
     client
@@ -105,6 +105,11 @@ export async function autorizar(req: Request, documentoId: string) {
     !resolveRole(perfil.data.perfil, Boolean(admin.data))
   )
     throw new CupomError(403, "Perfil sem acesso.");
+  const role=resolveRole(perfil.data.perfil,Boolean(admin.data));
+  if(role!=='gestor_rbk'&&role!=='superadmin_rbk'){
+    const farm=await client.from('farms').select('plano').eq('id',perfil.data.farm_id).maybeSingle();
+    if(farm.error||farm.data?.plano!=='completo')throw new CupomError(403,'Módulo não incluído no plano da farmácia.');
+  }
   if (
     doc.error ||
     !doc.data ||

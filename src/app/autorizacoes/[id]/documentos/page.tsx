@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import {usePlanoGestao} from "../../../../lib/auth/usePlanoGestao";
 import ConferenciaCupons from "../../../../components/cupons/ConferenciaCupons";
 import { dispararExtracao } from "../../../../lib/cupons/client";
 import { useEffect, useRef, useState } from "react";
@@ -8,8 +9,10 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/client";
 import { RbkBrand } from "../../../../components/RbkBrand";
 import BaixarAutorizacaoPdf from "../../../../components/documentos/BaixarAutorizacaoPdf";
-import DocumentUploadCard from "../../../../components/documentos/DocumentUploadCard";
+import { carregarDocumentosAutorizacao } from "../../../../lib/documentos/carregamento";
+import { substituirDocumentoConfirmado, type EnvioDocumento } from "../../../../lib/documentos/envio";
 import { resultadoConfirmacao } from "../../../../lib/documentos/fluxoConfirmacao";
+import { usePerfilAtual } from "../../../../lib/auth/usePerfilAtual";
 import { useNavegacaoPerfil } from "../../../../lib/auth/useNavegacaoPerfil";
 
 type Documento = {
@@ -51,6 +54,8 @@ function formatarNumeroAutorizacao(valor: string) {
 
 export default function DocumentosAutorizacao() {
   const supabase = createClient();
+  const perfil = usePerfilAtual();
+  const mostrarConferencia = usePlanoGestao(perfil);
 
   const params = useParams();
   const router = useRouter();
@@ -58,6 +63,9 @@ export default function DocumentosAutorizacao() {
   const [numeroAutorizacao, setNumeroAutorizacao] = useState("");
   const [documentos, setDocumentos] = useState<Documento[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [erroCarregamento,setErroCarregamento] = useState('');
+  const [recarregar,setRecarregar] = useState(0);
+  const [idCarregado,setIdCarregado] = useState<string | null>(null);
   const substituirInputRef = useRef<HTMLInputElement>(null);
   const [arquivoSubstituicao, setArquivoSubstituicao] = useState<File | null>(
     null,
@@ -67,65 +75,31 @@ export default function DocumentosAutorizacao() {
   );
   const [mensagemConfirmacao, setMensagemConfirmacao] = useState("");
   const [avisoLeitura,setAvisoLeitura] = useState("");
+  const [salvando,setSalvando] = useState(false);
+  const substituindo = useRef(false);
+  const tentativaSubstituicao = useRef<EnvioDocumento | null>(null);
+  const [visualizando,setVisualizando] = useState<string | null>(null);
+  const [erroVisualizacao,setErroVisualizacao] = useState('');
 
   const navegacao = useNavegacaoPerfil();
 
   useEffect(() => {
+    let ativo = true;
     async function carregarDados() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        window.location.href = "/";
-        return;
-      }
-
-      const { data: autorizacao } = await supabase
-        .from("autorizacoes")
-        .select("numero_autorizacao")
-        .eq("id", id)
-        .single();
-      if (!autorizacao) {
-        setCarregando(false);
-        return;
-      }
-      setNumeroAutorizacao(autorizacao.numero_autorizacao);
-
-      const { data: documentosSalvos, error: documentosError } = await supabase
-        .from("documentos")
-        .select("id, categoria, status, nome_arquivo, caminho_arquivo")
-        .eq("autorizacao_id", id);
-
-      if (documentosError) {
-        console.error("Erro ao carregar documentos:", documentosError);
-        setDocumentos([]);
-      } else {
-        const documentosComUrl = await Promise.all(
-          (documentosSalvos ?? []).map(async (documento) => {
-            if (!documento.caminho_arquivo) {
-              return {
-                ...documento,
-                url: null,
-              };
-            }
-
-            const { data: urlData } = await supabase.storage
-              .from("documentos")
-              .createSignedUrl(documento.caminho_arquivo, 3600);
-
-            return {
-              ...documento,
-              url: urlData?.signedUrl ?? null,
-            };
-          }),
-        );
-
-        setDocumentos(documentosComUrl);
-      }
-      setCarregando(false);
+      try {
+        const dados = await carregarDocumentosAutorizacao(supabase,id);
+        if (!ativo) return;
+        if (!dados) { router.replace('/'); return; }
+        setIdCarregado(id); setErroCarregamento('');
+        setNumeroAutorizacao(dados.numeroAutorizacao);
+        setDocumentos(dados.documentos.map(documento=>({...documento,url:null})));
+      } catch {
+        if (ativo) { setIdCarregado(id); setErroCarregamento('Não foi possível carregar os documentos. Tente novamente.'); }
+      } finally { if (ativo) setCarregando(false); }
     }
-    carregarDados();
-  }, [id, supabase]);
+    void carregarDados();
+    return () => { ativo = false; };
+  }, [id, supabase, router, recarregar]);
 
   const categoriasRecebidas = categorias.filter((c) =>
     documentos.some((d) => d.categoria === c.id && d.status === "recebido"),
@@ -134,22 +108,15 @@ export default function DocumentosAutorizacao() {
     (categoriasRecebidas / categorias.length) * 100,
   );
 
-  function statusCategoria(categoriaId: string) {
-    const documento = documentos.find((item) => item.categoria === categoriaId);
-
-    if (!documento) return "pendente";
-    if (documento.status === "recebido") return "recebido";
-    if (documento.status === "atencao") return "atencao";
-
-    return "pendente";
-  }
-
-  if (carregando)
-    return (
-      <main className="rbk-shell min-h-screen p-8 text-sm text-gray-500">
-        Carregando documentos...
-      </main>
-    );
+  const erroAtual = idCarregado === id ? erroCarregamento : '';
+  if (carregando || idCarregado !== id || erroAtual) return (
+    <main className="rbk-shell min-h-screen p-8 text-sm text-gray-600">
+      <h1 className="mb-4 text-xl font-bold text-gray-900">Documentos da autorização</h1>
+      <p role={erroAtual ? 'alert' : 'status'}>{erroAtual || 'Carregando documentos...'}</p>
+      {erroAtual && <button type="button" onClick={()=>{setCarregando(true);setErroCarregamento('');setRecarregar(n=>n+1);}} className="rbk-primary mt-4 rounded-xl px-4 py-3 font-bold">Tentar novamente</button>}
+      <Link href="/autorizacoes" className="mt-5 block font-bold text-red-600">Voltar para autorizações</Link>
+    </main>
+  );
 
   async function substituirDocumento(arquivo: File): Promise<boolean> {
     if (!documentoEmEdicao || !arquivoSubstituicao) return false;
@@ -163,43 +130,14 @@ export default function DocumentosAutorizacao() {
         throw new Error("Sessão expirada. Faça login novamente.");
       }
 
-      const extensao = arquivo.name.includes(".")
-        ? arquivo.name.substring(arquivo.name.lastIndexOf("."))
-        : "";
-
-      const novoCaminho = `${user.id}/${id}/${documentoEmEdicao.categoria}-${Date.now()}${extensao}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("documentos")
-        .upload(novoCaminho, arquivo, {
-          upsert: false,
-          contentType: arquivo.type || "application/octet-stream",
-        });
-
-      if (uploadError) {
-        throw new Error(uploadError.message);
+      if (!tentativaSubstituicao.current || tentativaSubstituicao.current.file !== arquivo || tentativaSubstituicao.current.id !== documentoEmEdicao.id) {
+        const extensao = arquivo.name.split('.').pop()?.replace(/[^a-zA-Z0-9]/g,'') || 'bin';
+        tentativaSubstituicao.current = {id:documentoEmEdicao.id,autorizacaoId:id,categoria:documentoEmEdicao.categoria,
+          caminho:`${user.id}/${id}/${documentoEmEdicao.categoria}-${crypto.randomUUID()}.${extensao}`,nome:arquivo.name,file:arquivo};
       }
-
-      const { error: updateError } = await supabase
-        .from("documentos")
-        .update({
-          nome_arquivo: arquivo.name,
-          caminho_arquivo: novoCaminho,
-          status: "recebido",
-        })
-        .eq("id", documentoEmEdicao.id);
-
-      if (updateError) {
-        await supabase.storage.from("documentos").remove([novoCaminho]);
-
-        throw new Error(updateError.message);
-      }
-
-      if (documentoEmEdicao.caminho_arquivo) {
-        await supabase.storage
-          .from("documentos")
-          .remove([documentoEmEdicao.caminho_arquivo]);
-      }
+      const envio = tentativaSubstituicao.current;
+      await substituirDocumentoConfirmado(supabase,envio,documentoEmEdicao.caminho_arquivo);
+      const novoCaminho = envio.caminho;
 
       setDocumentos((documentosAtuais) =>
         documentosAtuais.map((documento) =>
@@ -209,12 +147,14 @@ export default function DocumentosAutorizacao() {
                 nome_arquivo: arquivo.name,
                 caminho_arquivo: novoCaminho,
                 status: "recebido",
+                url: null,
               }
             : documento,
         ),
       );
 
-      setAvisoLeitura(await dispararExtracao(supabase, documentoEmEdicao.id, documentoEmEdicao.categoria));
+      void dispararExtracao(supabase, documentoEmEdicao.id, documentoEmEdicao.categoria).then(setAvisoLeitura);
+      tentativaSubstituicao.current = null;
       setArquivoSubstituicao(null);
       setDocumentoEmEdicao(null);
       return true;
@@ -234,7 +174,7 @@ export default function DocumentosAutorizacao() {
     <main className="rbk-shell min-h-screen">
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <RbkBrand compact light />
+          <RbkBrand compact light perfil={perfil} />
           {navegacao && (<Link
             href={navegacao.href}
             className="text-sm font-bold text-gray-500 hover:text-red-600"
@@ -246,8 +186,22 @@ export default function DocumentosAutorizacao() {
 
       <div className="rbk-container max-w-4xl py-8 sm:py-10">
         <div className="mb-7">
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-            Documentos da autorização
+          <h1 className="mt-2 flex items-center gap-2 text-3xl font-bold tracking-tight text-gray-900">
+            <svg
+              className="h-8 w-8 shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+              <polyline points="14 2 14 8 20 8" />
+              <path d="m9 15 2 2 4-4" />
+            </svg>
+            <span>Documentos da autorização</span>
           </h1>
           <p className="mt-2 text-sm text-gray-500">
             Autorização{" "}
@@ -346,20 +300,31 @@ export default function DocumentosAutorizacao() {
                     </div>
 
                     <div className="flex shrink-0 gap-2">
-                      {documento.url && (
-                        <a
-                          href={documento.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rbk-primary inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold"
-                        >
-                          Visualizar
-                        </a>
+                      {documento.caminho_arquivo && (
+                        <button type="button" disabled={visualizando !== null || salvando}
+                          onClick={async()=>{
+                            setVisualizando(documento.id); setErroVisualizacao('');
+                            const janela = window.open('about:blank','_blank');
+                            if (janela) janela.opener = null;
+                            try {
+                              const {data,error} = await supabase.storage.from('documentos').createSignedUrl(documento.caminho_arquivo!,3600);
+                              if (error || !data?.signedUrl) throw new Error('Arquivo indisponível');
+                              if (janela) janela.location.href = data.signedUrl;
+                              else window.location.assign(data.signedUrl);
+                            } catch { janela?.close(); setErroVisualizacao('Não foi possível abrir o arquivo. Tente novamente.'); }
+                            finally { setVisualizando(null); }
+                          }}
+                          className="rbk-primary inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold">
+                          {visualizando === documento.id ? 'Abrindo...' : 'Visualizar'}
+                        </button>
                       )}
 
                       <button
                         type="button"
+                        disabled={salvando}
                         onClick={() => {
+                          tentativaSubstituicao.current = null;
+                          setMensagemConfirmacao('');
                           setDocumentoEmEdicao(documento);
                           substituirInputRef.current?.click();
                         }}
@@ -389,8 +354,10 @@ export default function DocumentosAutorizacao() {
           }}
         />
 
+        {erroVisualizacao && <p role="alert" className="mt-4 text-sm text-red-700">{erroVisualizacao}</p>}
+        {arquivoSubstituicao && <p role="status" className="mt-4 text-sm text-amber-800">Novo arquivo selecionado — ainda não salvo. Clique em Confirmar e aguarde.</p>}
         {avisoLeitura && <p role="status" className="mt-4 text-sm text-gray-600">{avisoLeitura}</p>}
-        <ConferenciaCupons autorizacaoId={id} />
+        {mostrarConferencia && <ConferenciaCupons autorizacaoId={id} />}
         <div className="mt-8 space-y-3">
         {mensagemConfirmacao && (
           <div className="rounded-[13px] border border-green-100 bg-green-50 px-4 py-3 text-center text-sm font-semibold text-green-700">
@@ -399,13 +366,18 @@ export default function DocumentosAutorizacao() {
         )}
         <button
           type="button"
+          disabled={salvando}
           onClick={async () => {
+            if (substituindo.current) return;
             const temSubstituicao = Boolean(
               arquivoSubstituicao && documentoEmEdicao,
             );
 
             if (temSubstituicao && arquivoSubstituicao) {
-              const atualizada = await substituirDocumento(arquivoSubstituicao);
+              substituindo.current = true; setSalvando(true); setMensagemConfirmacao('');
+              let atualizada = false;
+              try { atualizada = await substituirDocumento(arquivoSubstituicao); }
+              finally { substituindo.current = false; setSalvando(false); }
               if (!atualizada) return;
 
               const resultado = resultadoConfirmacao(true);
@@ -422,7 +394,7 @@ export default function DocumentosAutorizacao() {
           }}
           className="rbk-primary w-full rounded-[13px] px-6 py-4 text-sm font-bold"
         >
-          Confirmar
+          {salvando ? 'Salvando e confirmando...' : 'Confirmar'}
         </button>
 
         <Link

@@ -36,7 +36,29 @@ function Conteudo({farmId, onBusy, moduloInicial}: {
   return <>
     <div className="rbk-container pt-7">
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-red-600">GESTÃO DA FARMÁCIA</p>
-      <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">Administração</h1>
+      <h1 className="mt-2 flex items-center gap-2 text-3xl font-bold tracking-tight text-gray-900">
+        <svg
+          className="h-8 w-8 shrink-0"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <line x1="4" y1="21" x2="4" y2="14" />
+          <line x1="4" y1="10" x2="4" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12" y2="3" />
+          <line x1="20" y1="21" x2="20" y2="16" />
+          <line x1="20" y1="12" x2="20" y2="3" />
+          <line x1="1" y1="14" x2="7" y2="14" />
+          <line x1="9" y1="8" x2="15" y2="8" />
+          <line x1="17" y1="16" x2="23" y2="16" />
+        </svg>
+        <span>Administração</span>
+      </h1>
       {modulo ? <nav aria-label="Módulos de Administração" className="mt-5 flex flex-wrap gap-2">
         <button disabled={ocupado} onClick={() => setModulo(null)} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 disabled:opacity-50">← Administração</button>
         {modulos.map(item => <button key={item.id} disabled={ocupado} aria-current={modulo === item.id ? 'page' : undefined} onClick={() => setModulo(item.id)} className={`min-h-11 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 ${modulo === item.id ? 'bg-red-700 text-white' : 'border border-gray-200 bg-white text-gray-700 hover:bg-red-50'}`}>{item.titulo}</button>)}

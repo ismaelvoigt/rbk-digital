@@ -1,5 +1,6 @@
 "use client";
 
+import {LocalidadeFields} from "../../../components/LocalidadeFields";
 import Link from "next/link";
 import { formatTelefone } from "../../../lib/cadastro/telefone";
 import { formatCnpj, normalizeCnpj } from "../../../lib/auditoria/cnpj";
@@ -99,24 +100,35 @@ export default function NovaFarmaciaPage() {
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
           <RbkBrand compact light />
-
-          <Link
-            href="/dashboard"
-            className="text-sm font-semibold text-gray-500 transition hover:text-red-600"
-          >
-            ← Voltar ao Dashboard
-          </Link>
         </div>
       </header>
 
       <div className="rbk-container py-8 sm:py-10">
         <div className="mb-8">
+          <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">
+            ← Voltar ao Dashboard
+          </Link>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-red-600">
             Administração
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-            Nova farmácia
+          <h1 className="mt-2 flex items-center gap-2 text-3xl font-bold tracking-tight text-gray-900">
+            <svg
+              className="h-8 w-8 shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <span>Nova farmácia</span>
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
@@ -246,40 +258,7 @@ export default function NovaFarmaciaPage() {
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="cidade"
-                className="mb-2 block text-sm font-semibold text-gray-700"
-              >
-                Cidade
-              </label>
-              <input
-                id="cidade"
-                type="text"
-                value={cidade}
-                onChange={(event) => setCidade(event.target.value)}
-                disabled={enviando}
-                className="rbk-input"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="estado"
-                className="mb-2 block text-sm font-semibold text-gray-700"
-              >
-                Estado
-              </label>
-              <input
-                id="estado"
-                type="text"
-                value={estado}
-                onChange={(event) => setEstado(event.target.value.toUpperCase())}
-                maxLength={2}
-                disabled={enviando}
-                className="rbk-input"
-              />
-            </div>
+            <LocalidadeFields estado={estado} cidade={cidade} onEstadoChange={setEstado} onCidadeChange={setCidade} disabled={enviando}/>
 
             <div className="border-t border-gray-100 pt-7">
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-red-600">
@@ -321,7 +300,7 @@ export default function NovaFarmaciaPage() {
                 </p>
 
                 <p className="mt-1 text-sm font-semibold text-gray-700">
-                  Farmácia
+                  Atendente — teste inicial
                 </p>
               </div>
 
@@ -345,7 +324,7 @@ export default function NovaFarmaciaPage() {
                 Ao concluir o cadastro, a farmácia será
                 registrada no RBK Digital e o responsável
                 receberá um convite por e-mail para criar
-                sua senha e acessar o sistema.
+                sua senha e testar o armazenamento de documentos com o perfil de atendente. Você poderá promovê-lo depois a administrador da farmácia. Os módulos de gestão serão liberados separadamente por plano.
               </p>
             </div>
 

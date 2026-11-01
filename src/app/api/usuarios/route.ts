@@ -1,3 +1,4 @@
+import { publicOrigin } from "../../../lib/config/ambiente";
 import { normalizeTelefone } from "../../../lib/cadastro/telefone";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -90,6 +91,7 @@ export async function GET(request: Request) {
         status,
         created_at,
         last_access_at,
+        tipo_convite,
         farms!users_farm_id_fkey (
           razao_social,
           nome_fantasia,
@@ -97,10 +99,11 @@ export async function GET(request: Request) {
           telefone,
           cidade,
           estado,
-          status
+          status,
+          plano
         )
       `)
-      .eq("perfil", "farmacia")
+      .or("perfil.eq.farmacia,tipo_convite.eq.farmacia")
       .order("created_at", { ascending: false });
 
     if (id) {
@@ -372,7 +375,7 @@ export async function POST(request: Request) {
       } = await admin
         .from("users")
         .select(
-          "id, farm_id, nome, email, perfil, status"
+          "id, farm_id, nome, email, perfil, status, tipo_convite"
         )
         .eq("id", usuarioAuthExistente.id)
         .maybeSingle();
@@ -396,7 +399,7 @@ export async function POST(request: Request) {
        * Se já existe registro em users, esse acesso já
        * pertence a alguma estrutura do RBK Digital.
        */
-      if (usuarioExistente?.perfil === "farmacia" && farmExistente && usuarioExistente.farm_id === farmExistente.id) {
+      if ((usuarioExistente?.perfil === "farmacia" || usuarioExistente?.tipo_convite === "farmacia") && farmExistente && usuarioExistente.farm_id === farmExistente.id) {
         return NextResponse.json({ success: true, tipo_acesso: "existente",
           mensagem: "Esta farmácia e este acesso já estão cadastrados. Você pode criar novos processos para o mesmo CNPJ.",
           farm: farmExistente, usuario: usuarioExistente }, { status: 200 });
@@ -449,7 +452,8 @@ export async function POST(request: Request) {
           farm_id: farm.id,
           nome: razaoSocial,
           email,
-          perfil: "farmacia",
+          perfil: "operador",
+          tipo_convite: "farmacia",
           status: "active",
         })
         .select(
@@ -489,7 +493,7 @@ export async function POST(request: Request) {
     const { preparePharmacyInvitation } = await import("../../../lib/cadastro/invitation");
     let sendInvitation: Awaited<ReturnType<typeof preparePharmacyInvitation>>;
     try {
-      sendInvitation = await preparePharmacyInvitation();
+      sendInvitation = await preparePharmacyInvitation({tipo_convite:"farmacia",nome:razaoSocial,perfil:"atendente"});
     } catch {
       return NextResponse.json(
         { error: "O envio de convites está indisponível. Nenhum cadastro foi criado. Tente novamente mais tarde." },
@@ -530,7 +534,7 @@ export async function POST(request: Request) {
     } = await admin.auth.admin.generateLink({
       type: "invite",
       email,
-      options: { redirectTo: "https://rbk-digital.vercel.app/primeiro-acesso" },
+      options: { redirectTo: `${publicOrigin()}/primeiro-acesso` },
     });
 
     if (conviteError || !convite.user || !convite.properties?.hashed_token) {
@@ -561,7 +565,8 @@ export async function POST(request: Request) {
         farm_id: farm.id,
         nome: razaoSocial,
         email,
-        perfil: "farmacia",
+        perfil: "operador",
+          tipo_convite: "farmacia",
         status: "active",
       })
       .select(
@@ -590,7 +595,7 @@ export async function POST(request: Request) {
 
     // Send only once the pharmacy and its access record are both persisted.
     try {
-      const primeiroAcesso = new URL("https://rbk-digital.vercel.app/primeiro-acesso");
+      const primeiroAcesso = new URL(`${publicOrigin()}/primeiro-acesso`);
       primeiroAcesso.searchParams.set("type", "invite");
       primeiroAcesso.searchParams.set("token_hash", convite.properties.hashed_token);
       await sendInvitation(email, nomeFantasia || razaoSocial, primeiroAcesso.toString());
@@ -772,7 +777,7 @@ export async function PATCH(request: Request) {
         error: usuarioBuscaError,
       } = await admin
         .from("users")
-        .select("id, farm_id, perfil, status")
+        .select("id, farm_id, perfil, status, tipo_convite")
         .eq("id", id)
         .maybeSingle();
 
@@ -795,7 +800,7 @@ export async function PATCH(request: Request) {
         );
       }
 
-      if (usuarioAtual.perfil !== "farmacia") {
+      if (usuarioAtual.perfil !== "farmacia" && usuarioAtual.tipo_convite !== "farmacia") {
         return NextResponse.json(
           { error: "O usuário informado não pertence a uma farmácia." },
           { status: 400 }
@@ -931,7 +936,7 @@ export async function PATCH(request: Request) {
     } = await admin
       .from("users")
       .select(
-        "id, farm_id, nome, email, perfil, status"
+        "id, farm_id, nome, email, perfil, status, tipo_convite"
       )
       .eq("id", id)
       .maybeSingle();
@@ -955,7 +960,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    if (usuarioAtual.perfil !== "farmacia") {
+    if (usuarioAtual.perfil !== "farmacia" && usuarioAtual.tipo_convite !== "farmacia") {
       return NextResponse.json(
         {
           error:

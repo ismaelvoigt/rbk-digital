@@ -1,3 +1,4 @@
+import { publicOrigin } from "../src/lib/config/ambiente";
 import { normalizeTelefone } from "../src/lib/cadastro/telefone";
 import { normalizeCnpj } from "../src/lib/auditoria/cnpj";
 import { describe, expect, it } from "vitest";
@@ -29,6 +30,7 @@ function carregarPatch() {
   runInNewContext(js, {
     exports, process: { env: {} }, console,
     require(name: string) {
+      if (name.endsWith("/config/ambiente")) return { publicOrigin };
       if (name === "next/server") return { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } };
       if (name === "@supabase/supabase-js") return { createClient: () => ({ auth: { getUser: async () => ({ data: { user: { id: "admin-teste" } }, error: null }) } }) };
       if (name.endsWith("/supabase/admin")) return { createAdminClient: () => admin };

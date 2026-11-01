@@ -346,16 +346,32 @@ export default function AutorizacoesUsuario() {
           >
             ← Voltar para farmácias
           </Link>
-          <Link href="/dashboard" className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">← Voltar ao Dashboard</Link>
         </nav>
 
+        <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">
+          ← Voltar ao Dashboard
+        </Link>
         <div className="mb-10">
           <div className="text-sm font-bold uppercase tracking-[0.18em] text-red-600">
             Administração
           </div>
 
-          <h1 className="mt-2 text-4xl font-bold tracking-tight text-gray-900">
-            Autorizações da farmácia
+          <h1 className="mt-2 flex items-center gap-2 text-4xl font-bold tracking-tight text-gray-900">
+            <svg
+              className="h-9 w-9 shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+              <polyline points="14 2 14 8 20 8" />
+              <path d="m9 15 2 2 4-4" />
+            </svg>
+            <span>Autorizações da farmácia</span>
           </h1>
 
           <p className="mt-3 text-lg text-gray-500">

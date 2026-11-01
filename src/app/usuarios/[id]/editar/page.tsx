@@ -1,5 +1,7 @@
 "use client";
 
+import {AcessoFarmacia} from "../../../../components/AcessoFarmacia";
+import {LocalidadeFields} from "../../../../components/LocalidadeFields";
 import Link from "next/link";
 import { formatTelefone, normalizeTelefone } from "../../../../lib/cadastro/telefone";
 import { useRetornoFarmacias } from "../../../../lib/usuarios/useRetornoFarmacias";
@@ -24,6 +26,7 @@ type Cadastro = {
         cidade: string | null;
         estado: string | null;
         status: string;
+        plano: string;
       }
     | null;
 };
@@ -293,19 +296,36 @@ export default function EditarCadastroFarmaciaPage() {
           >
             ← Voltar para farmácias
           </Link>
-            <Link href="/dashboard" className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">← Voltar ao Dashboard</Link>
           </nav>
         </div>
       </header>
 
       <div className="mx-auto max-w-4xl px-6 py-10">
         <div className="mb-8">
+          <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">
+            ← Voltar ao Dashboard
+          </Link>
           <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--rbk-red)]">
             Perfil do gestor
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-gray-900">
-            Editar cadastro
+          <h1 className="mt-2 flex items-center gap-2 text-3xl font-bold text-gray-900">
+            <svg
+              className="h-8 w-8 shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <span>Editar cadastro</span>
           </h1>
 
           <p className="mt-2 text-gray-500">
@@ -324,6 +344,8 @@ export default function EditarCadastroFarmaciaPage() {
             {sucesso}
           </div>
         )}
+
+        {cadastro && <AcessoFarmacia id={cadastro.id} perfil={cadastro.perfil} plano={cadastro.farms?.plano ?? "armazenamento"}/>}
 
         <form
           onSubmit={salvar}
@@ -449,48 +471,8 @@ export default function EditarCadastroFarmaciaPage() {
                 />
               </div>
 
-              <div className="grid gap-5 md:grid-cols-[1fr_140px]">
-                <div>
-                  <label
-                    htmlFor="cidade"
-                    className="mb-1 block text-sm font-medium text-gray-700"
-                  >
-                    Cidade
-                  </label>
-
-                  <input
-                    id="cidade"
-                    value={cidade}
-                    onChange={(event) =>
-                      setCidade(event.target.value)
-                    }
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[var(--rbk-red)] focus:ring-2 focus:ring-red-600/20"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="estado"
-                    className="mb-1 block text-sm font-medium text-gray-700"
-                  >
-                    Estado
-                  </label>
-
-                  <input
-                    id="estado"
-                    maxLength={2}
-                    value={estado}
-                    onChange={(event) =>
-                      setEstado(
-                        event.target.value
-                          .toUpperCase()
-                          .replace(/[^A-Z]/g, "")
-                      )
-                    }
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 uppercase outline-none focus:border-[var(--rbk-red)] focus:ring-2 focus:ring-red-600/20"
-                    placeholder="UF"
-                  />
-                </div>
+              <div className="space-y-5">
+                <LocalidadeFields estado={estado} cidade={cidade} onEstadoChange={setEstado} onCidadeChange={setCidade} disabled={salvando}/>
               </div>
             </div>
           </section>

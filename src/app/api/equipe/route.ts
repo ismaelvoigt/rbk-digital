@@ -1,3 +1,4 @@
+import { publicOrigin } from "../../../lib/config/ambiente";
 import {NextResponse} from 'next/server';
 import {createClient} from '@supabase/supabase-js';
 import {createAdminClient} from '../../../lib/supabase/admin';
@@ -60,7 +61,7 @@ export async function POST(request:Request){try{
  try{send=await preparePharmacyInvitation({tipo_convite:'funcionario',nome:input.nome,perfil:perfisEquipe[input.perfil]});}catch{throw new EquipeError('O envio de convites está indisponível. Tente novamente mais tarde.',503);}
  await convidarFuncionario(input,c,{
   generate:async metadata=>{
-   const {data,error}=await c.admin.auth.admin.generateLink({type:'invite',email:input.email,options:{redirectTo:'https://rbk-digital.vercel.app/primeiro-acesso',data:metadata}});
+   const {data,error}=await c.admin.auth.admin.generateLink({type:'invite',email:input.email,options:{redirectTo:`${publicOrigin()}/primeiro-acesso`,data:metadata}});
    if(error||!data.user||!data.properties?.hashed_token)throw new EquipeError('Não foi possível gerar o convite. Confira se o e-mail já possui acesso.',409);
    if(existingId&&data.user.id!==existingId)throw new EquipeError('O convite não corresponde ao usuário.',409);
    return {id:data.user.id,hash:data.properties.hashed_token};

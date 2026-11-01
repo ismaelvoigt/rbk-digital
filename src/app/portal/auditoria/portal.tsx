@@ -173,7 +173,7 @@ export default function Portal() {
       <header className="aud-top rbk-topbar">
         <div>
           <div className="aud-brand">
-            <RbkBrand compact light />
+            <RbkBrand compact light search={false} />
           </div>
           <span className="aud-secure">Portal de documentos</span>
         </div>

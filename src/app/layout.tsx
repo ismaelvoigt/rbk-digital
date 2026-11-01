@@ -21,7 +21,14 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        {process.env.NEXT_PUBLIC_RBK_ENV === "development" && (
+          <div role="status" style={{padding:"10px 16px",background:"#fef3c7",color:"#713f12",textAlign:"center",fontSize:14,fontWeight:700}}>
+            Ambiente de desenvolvimento e testes — use somente dados fictícios
+          </div>
+        )}
+        {children}
+      </body>
     </html>
   );
 }

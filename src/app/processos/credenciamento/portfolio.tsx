@@ -41,15 +41,12 @@ export default function Credenciamento({ id }: { id: string }) {
       <header className="rbk-header">
         <div className="rbk-container flex min-h-[76px] items-center justify-between">
           <RbkBrand compact light />
-          <Link
-            href="/dashboard"
-            className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-          >
-            ← Voltar ao Dashboard
-          </Link>
         </div>
       </header>
       <div className="rbk-container py-8">
+        <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">
+          ← Voltar ao Dashboard
+        </Link>
         <div className="mb-6 text-sm text-gray-500">
           <Link href="/processos/credenciamento">Processos</Link> /
           Credenciamento PFPB

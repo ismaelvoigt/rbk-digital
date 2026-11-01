@@ -1,12 +1,12 @@
 import {beforeEach,afterEach,expect,it,vi} from 'vitest';
-const m=vi.hoisted(()=>({getUser:vi.fn(),list:vi.fn(),generate:vi.fn(),oldInvite:vi.fn(),deleteUser:vi.fn(),prepare:vi.fn(),send:vi.fn(),operations:[] as string[],adminAllowed:true,insertFails:false,existingFarm:false,lastCnpj:"",existingUser:null as null | {id:string;farm_id:string;perfil:string}}));
+const m=vi.hoisted(()=>({getUser:vi.fn(),list:vi.fn(),generate:vi.fn(),oldInvite:vi.fn(),deleteUser:vi.fn(),prepare:vi.fn(),send:vi.fn(),inserted:[] as any[],operations:[] as string[],adminAllowed:true,insertFails:false,existingFarm:false,lastCnpj:"",existingUser:null as null | {id:string;farm_id:string;perfil:string}}));
 vi.mock('@supabase/supabase-js',()=>({createClient:()=>({auth:{getUser:m.getUser}})}));
 vi.mock('../src/lib/cadastro/invitation',()=>({preparePharmacyInvitation:m.prepare}));
 vi.mock('../src/lib/supabase/admin',()=>({createAdminClient:()=>({
  rpc:async (_name:string,args:any)=>{m.lastCnpj=args.payload.cnpj;return {data:{farm:m.existingFarm?{id:'existing-farm',razao_social:'Original'}:args.p_create?{id:'new-farm'}:null,created:!m.existingFarm&&!!args.p_create},error:null};},
  auth:{admin:{listUsers:m.list,generateLink:m.generate,inviteUserByEmail:m.oldInvite,deleteUser:m.deleteUser}},
  from:(table:string)=>{
-  const q={select:()=>q,eq:()=>q,insert:()=>{m.operations.push(`${table}:insert`);return q;},delete:()=>{m.operations.push(`${table}:delete`);return q;},
+  const q={select:()=>q,eq:()=>q,insert:(data:unknown)=>{m.inserted.push(data);m.operations.push(`${table}:insert`);return q;},delete:()=>{m.operations.push(`${table}:delete`);return q;},
    maybeSingle:async()=>({data:table==='rbk_admins'&&m.adminAllowed?{user_id:'admin'}:table==='farms'&&m.existingFarm?{id:'existing-farm'}:table==='users'?m.existingUser:null,error:null}),
    single:async()=>table==='users'&&m.insertFails?{data:null,error:{message:'db_failed'}}:{data:{id:table==='farms'?'new-farm':'new-user'},error:null},
    then:(resolve:(v:unknown)=>unknown)=>Promise.resolve({data:null,error:null}).then(resolve),
@@ -16,7 +16,7 @@ vi.mock('../src/lib/supabase/admin',()=>({createAdminClient:()=>({
 import {POST} from '../src/app/api/usuarios/route';
 function request(auth=true){return new Request('https://rbk-digital.vercel.app/api/usuarios',{method:'POST',headers:auth?{authorization:'Bearer test'}:{},body:JSON.stringify({razao_social:'Farmácia Teste',cnpj:'12345678000199',email:'client@example.com'})});}
 beforeEach(()=>{
- vi.clearAllMocks();m.operations.length=0;m.adminAllowed=true;m.insertFails=false;m.existingFarm=false;m.existingUser=null;
+ vi.clearAllMocks();m.operations.length=0;m.inserted.length=0;m.adminAllowed=true;m.insertFails=false;m.existingFarm=false;m.existingUser=null;
  vi.spyOn(console,'error').mockImplementation(()=>{});
  m.getUser.mockResolvedValue({data:{user:{id:'admin'}},error:null});
  m.list.mockResolvedValue({data:{users:[]},error:null});
@@ -83,3 +83,5 @@ it.each(['119999999999','123','telefone12345678901'])('rejects invalid phone %s 
  const res=await POST(new Request('https://rbk-digital.vercel.app/api/usuarios',{method:'POST',headers:{authorization:'Bearer test'},body:JSON.stringify({razao_social:'Farmácia Teste',cnpj:'11222333000181',email:'client@example.com',telefone})}));
  expect(res.status).toBe(400);expect((await res.json()).error).toContain('telefone');expect(m.operations).toEqual([]);expect(m.generate).not.toHaveBeenCalled();
 });
+
+it('novo convite entra como atendente responsável, sem conceder administração',async()=>{expect((await POST(request())).status).toBe(201);expect(m.inserted.find(x=>x.email)).toMatchObject({perfil:'operador',tipo_convite:'farmacia'});});

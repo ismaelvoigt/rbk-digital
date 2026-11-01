@@ -4,6 +4,7 @@ type AccessInput = {
   authenticated: boolean;
   perfil: string | null;
   pathname: string;
+  plano?: string | null;
 };
 
 type AccessDecision =
@@ -50,6 +51,7 @@ export function getAccessDecision({
   authenticated,
   perfil,
   pathname,
+  plano,
 }: AccessInput): AccessDecision {
   if (!authenticated) {
     return {
@@ -70,6 +72,10 @@ export function getAccessDecision({
 
   const isRbk = role === "gestor_rbk" || role === "superadmin_rbk";
   const home = isRbk ? "/dashboard" : "/farmacia";
+
+  if (!isRbk && plano !== undefined && plano !== 'completo' && ["/administracao","/vendas","/compras","/relatorios","/proximas-dispensacoes","/pendencias"].some(r=>isRota(pathname,r))) {
+    return {allowed:false,redirectTo:home};
+  }
 
   if (isRota(pathname, "/equipe")) {
     return role === "administrador_farmacia" ? {allowed:true} : {allowed:false,redirectTo:home};

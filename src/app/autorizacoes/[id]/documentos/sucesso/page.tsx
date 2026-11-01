@@ -34,14 +34,38 @@ export default function DocumentoSucesso() {
   const supabase = createClient();
   const [numeroAutorizacao, setNumeroAutorizacao] = useState("");
 
+  const [verificacao,setVerificacao] = useState<'verificando' | 'confirmado' | 'falhou'>('verificando');
+
   useEffect(() => {
+    let ativo = true;
     async function carregarAutorizacao() {
-      const { data } = await supabase.from("autorizacoes")
-        .select("numero_autorizacao").eq("id", id).single();
-      if (data) setNumeroAutorizacao(data.numero_autorizacao);
+      try {
+        const [{data:autorizacao,error:autorizacaoErro},{data:documentos,error:documentosErro}] = await Promise.all([
+          supabase.from('autorizacoes').select('numero_autorizacao').eq('id',id).single(),
+          supabase.from('documentos').select('id,caminho_arquivo,status').eq('autorizacao_id',id),
+        ]);
+        if (autorizacaoErro || !autorizacao || documentosErro || !documentos?.length) throw new Error('Sem confirmação');
+        for (const documento of documentos) {
+          if (documento.status !== 'recebido' || !documento.caminho_arquivo) throw new Error('Documento pendente');
+          const {data,error} = await supabase.storage.from('documentos').info(documento.caminho_arquivo);
+          if (error || !data?.size) throw new Error('Arquivo indisponível');
+        }
+        if (ativo) { setNumeroAutorizacao(autorizacao.numero_autorizacao); setVerificacao('confirmado'); }
+      } catch { if (ativo) setVerificacao('falhou'); }
     }
-    carregarAutorizacao();
+    void carregarAutorizacao();
+    return () => { ativo = false; };
+
   }, [id, supabase]);
+
+  if (verificacao !== 'confirmado') return (
+    <main className="rbk-shell min-h-screen p-8">
+      <p role={verificacao === 'falhou' ? 'alert' : 'status'}>
+        {verificacao === 'verificando' ? 'Verificando armazenamento dos documentos...' : 'Não foi possível confirmar o armazenamento de todos os documentos. Confira a autorização e os arquivos pendentes.'}
+      </p>
+      <Link href={`/autorizacoes/${id}/documentos`} className="mt-5 inline-block font-bold text-red-600">Conferir documentos</Link>
+    </main>
+  );
 
   return (
     <main className="rbk-shell min-h-screen">
