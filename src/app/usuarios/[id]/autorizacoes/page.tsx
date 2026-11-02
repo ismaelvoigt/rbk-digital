@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { RbkBrand } from "../../../../components/RbkBrand";
 import { useRetornoFarmacias } from "../../../../lib/usuarios/useRetornoFarmacias";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -337,6 +338,11 @@ export default function AutorizacoesUsuario() {
 
   return (
     <main className="min-h-screen bg-gray-50">
+      <header className="rbk-topbar">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-5">
+          <RbkBrand light />
+        </div>
+      </header>
       <div className="mx-auto max-w-7xl px-6 py-10">
 
         <nav aria-label="Navegação de farmácias" className="mb-8 flex flex-wrap items-center justify-between gap-3">
