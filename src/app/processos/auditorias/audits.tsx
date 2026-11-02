@@ -72,20 +72,12 @@ export default function Audits() {
   const [deleteCnpj, setDeleteCnpj] = useState("");
   const [removedNotice, setRemovedNotice] = useState("");
   const [officeProgress, setOfficeProgress] = useState(0);
-  const [usage, setUsage] = useState<
-    { pharmacy: string; period: string; bytes: number; files: number }[]
-  >([]);
   const load = useCallback(async () => {
     setError("");
     try {
       if (id) setDetail(await managerApi(`/${id}`));
       else {
-        const [list, u] = await Promise.all([
-          managerApi(`?page=${page}&cnpj=${encodeURIComponent(searchCnpj)}`),
-          managerApi("/usage"),
-        ]);
-        setItems(list);
-        setUsage(u);
+        setItems(await managerApi(`?page=${page}&cnpj=${encodeURIComponent(searchCnpj)}`));
       }
     } catch (e) {
       setError((e as Error).message);
@@ -388,37 +380,6 @@ export default function Audits() {
                 </button>
               </div>
             </section>
-            {!!usage.length && (
-              <section className="aud-card">
-                <h2>Armazenamento recebido por farmácia e mês</h2>
-                <small>
-                  Inclui lotes concluídos e ofícios recebidos. Objetos parciais e tráfego
-                  devem ser conferidos também no painel do Storage.
-                </small>
-                <div className="aud-table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Farmácia</th>
-                        <th>Mês</th>
-                        <th>Arquivos</th>
-                        <th>Tamanho</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {usage.map((u, i) => (
-                        <tr key={i}>
-                          <td>{u.pharmacy}</td>
-                          <td>{u.period}</td>
-                          <td>{u.files}</td>
-                          <td>{bytes(u.bytes)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            )}
           </>
         )}
         {detail && (
