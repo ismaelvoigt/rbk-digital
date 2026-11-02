@@ -32,11 +32,10 @@ export default function OfficeAttachment({ id, files, onRefresh, onDownload }: {
         <span>{current ? `${current.filename} · ${bytes(current.size)}` : "Anexe o ofício para completar o cadastro."}</span>
       </div>
       <div className="aud-actions">
-        {current?.scan === "clean" && <button onClick={() => onDownload(current.id)}>Baixar</button>}
+        {current && <button onClick={() => onDownload(current.id)}>Baixar</button>}
         {current && <button className="aud-primary" disabled={busy} onClick={() => {setEditing(!editing);setMessage("");}}>{editing ? "Cancelar substituição" : "Substituir ofício"}</button>}
       </div>
     </div>
-    {current && ["infected", "rejected"].includes(current.scan || "") && <p role="alert">Arquivo bloqueado por segurança. Substitua o ofício.</p>}
     {(!current || editing) && <div className="aud-office-edit">
       <label className="aud-drop"><strong>1. Selecione o ofício recebido</strong><span className="aud-upload-help">Clique no botão abaixo para escolher o arquivo no seu aparelho.</span><input aria-label="Selecionar ofício" ref={input} type="file" accept=".pdf,.html,.htm,.jpg,.jpeg,.png,.tif,.tiff" disabled={busy} onChange={e => {setFile(e.target.files?.[0] || null);setProgress(0);setMessage("");}} /></label>
       {file && <p className="aud-selection" role="status">Selecionado: <strong>{file.name}</strong> · {bytes(file.size)}</p>}
@@ -45,7 +44,7 @@ export default function OfficeAttachment({ id, files, onRefresh, onDownload }: {
       <button className="aud-primary" disabled={busy || !file} onClick={() => void send()}>{busy ? "Enviando…" : "2. Enviar ofício"}</button>
     </div>}
     {received.length > 1 && <details className="aud-office-history"><summary>Versões anteriores ({received.length - 1})</summary>
-      {received.slice(1).map(f => <div className="aud-row" key={f.id}><span>{f.filename} · {date(f.received_at)} · {bytes(f.size)}</span>{f.scan === "clean" && <button onClick={() => onDownload(f.id)}>Baixar</button>}</div>)}
+      {received.slice(1).map(f => <div className="aud-row" key={f.id}><span>{f.filename} · {date(f.received_at)} · {bytes(f.size)}</span>{f.received_at && <button onClick={() => onDownload(f.id)}>Baixar</button>}</div>)}
     </details>}
     {message && <p role="status">{message}</p>}
   </section>;

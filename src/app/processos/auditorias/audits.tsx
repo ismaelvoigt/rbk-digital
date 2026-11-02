@@ -8,6 +8,7 @@ import { managerApi } from "../../../lib/auditoria/client";
 import { bytes, date, type Summary } from "../../../lib/auditoria/domain";
 import "./auditoria.css";
 import type { DeliveryResult } from "../../../lib/convites/types";
+import DownloadLotes from "./download-lotes";
 import ContactMessages from "./contact-messages";
 import OfficeAttachment from "./office-attachment";
 import PortalQr from "./portal-qr";
@@ -38,8 +39,8 @@ const events: Record<string, string> = {
   upload_ticket: "Envio autorizado",
   download: "Download solicitado",
   scan_clean: "Verificação de segurança concluída",
-  scan_infected: "Arquivo bloqueado",
-  scan_error: "Verificação pendente",
+  scan_infected: "Sinalização registrada pelo scanner",
+  scan_error: "Verificação em segundo plano sem conclusão",
 };
 export default function Audits() {
   const params = useSearchParams(),
@@ -542,6 +543,7 @@ export default function Audits() {
               <section className="aud-card">
                 <div className="aud-row">
                   <h2>Autorizações · Documentos recebidos</h2>
+                    <DownloadLotes auditId={detail.audit.id} disabled={!detail.batches.some(b=>b.completed_at && b.files.some(f=>f.received_at))} />
                   <div className="aud-actions"><button disabled={busy} onClick={() => void load()}>Atualizar</button><button className="aud-primary" disabled={busy} onClick={() => void generateReport()}>{busy ? "Aguarde…" : "Gerar relatório"}</button></div>
                 </div>
                 {!detail.batches.length && <p>Aguardando o primeiro envio.</p>}
@@ -549,6 +551,7 @@ export default function Audits() {
                   <article className="aud-batch" key={b.id}>
                     <div className="aud-row">
                       <h3>Lote {b.number}</h3>
+                      <DownloadLotes auditId={detail.audit.id} batchId={b.id} number={b.number} disabled={!b.completed_at || !b.files.some(f=>f.received_at)} />
                       <span
                         className={`aud-badge ${b.completed_at ? "green" : ""}`}
                       >
@@ -567,7 +570,6 @@ export default function Audits() {
                           <tr>
                             <th>Arquivo</th>
                             <th>Tamanho</th>
-                            <th>Segurança</th>
                             <th>Ação</th>
                           </tr>
                         </thead>
@@ -577,26 +579,17 @@ export default function Audits() {
                               <td>{f.filename}</td>
                               <td>{bytes(f.size)}</td>
                               <td>
-                                {f.scan === "clean"
-                                  ? "Verificado"
-                                  : ["infected", "rejected"].includes(
-                                        f.scan || "",
-                                      )
-                                    ? "Bloqueado"
-                                    : "Quarentena"}
-                              </td>
-                              <td>
                                 <button
                                   disabled={
                                     busy ||
-                                    f.scan !== "clean" ||
+                                    !f.received_at ||
                                     !b.completed_at
                                   }
                                   onClick={() =>
                                     void act("download", { file_id: f.id })
                                   }
                                 >
-                                  Download seguro
+                                  Baixar
                                 </button>
                               </td>
                             </tr>
@@ -607,8 +600,7 @@ export default function Audits() {
                   </article>
                 ))}
                 <small>
-                  Recebimento não significa autenticidade. Downloads são
-                  liberados somente após verificação de segurança.
+                  Os arquivos ficam disponíveis após a confirmação do recebimento. O ZIP contém uma pasta por lote concluído. Em downloads grandes ou conexões lentas, prefira baixar um lote por vez.
                 </small>
               </section>
             )}
