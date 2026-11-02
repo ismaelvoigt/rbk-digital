@@ -62,7 +62,7 @@ export function AcessoFarmacia({
         Responsável:{" "}
         <strong>
           {role === "operador"
-            ? "Atendente — teste inicial"
+            ? "Atendente"
             : "Administrador da farmácia"}
         </strong>
       </p>
