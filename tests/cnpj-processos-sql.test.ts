@@ -66,6 +66,7 @@ beforeAll(async () => {
   const migration = readdirSync('supabase/migrations').find(n=>n.endsWith('_cnpj_multiplos_processos.sql'));
   if (migration) await db.exec(readFileSync('supabase/migrations/'+migration,'utf8'));
   await db.exec(readFileSync('supabase/migrations/20261102030000_exclusao_fichas.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261102040000_auditoria_sem_quarentena.sql','utf8'));
   await db.exec(`set role authenticated;set test.uid='${id(1)}'`);
 }, 30000);
 afterAll(async () => {
@@ -160,4 +161,23 @@ it('keeps started audit submissions protected even with the correct CNPJ',async(
  const h='8'.repeat(64);await manager('link',{hash:h,days:40},a.id);
  await portal('begin',{key:crypto.randomUUID(),files:[{id:crypto.randomUUID(),name:'teste.pdf',size:30,mime:'application/pdf',fingerprint:'7'.repeat(64)}]},h);
  await expect(manager('delete_empty',{cnpj:'12345678000190',confirmed:true},a.id)).rejects.toThrow('já iniciou ou concluiu');
+});
+
+it('downloads received audit documents in every scan state but still rejects incomplete or foreign files',async()=>{
+ await db.exec(`reset role;set role authenticated;set test.uid='${id(1)}'`);
+ const a=await manager('create',{farm_id:id(10),reference:'Sem quarentena',confirm_duplicate:true},null);
+ const office=await manager('office_begin',{file:{id:crypto.randomUUID(),name:'oficio.pdf',size:30,mime:'application/pdf',fingerprint:'2'.repeat(64)}},a.id);
+ await expect(manager('download',{file_id:office.id},a.id)).rejects.toThrow('Arquivo');
+ await db.exec('reset role');
+ await db.query('update aud_files set received_at=now() where id=$1',[office.id]);
+ for(const scan of ['pending','error','clean','infected','rejected']){
+  await db.query('update aud_files set scan=$1 where id=$2',[scan,office.id]);
+  await db.exec(`set role authenticated;set test.uid='${id(1)}'`);
+  expect(await manager('download',{file_id:office.id},a.id)).toMatchObject({filename:'oficio.pdf'});
+  await db.exec('reset role');
+ }
+ await db.exec(`set role authenticated;set test.uid='${id(2)}'`);
+ await expect(manager('download',{file_id:office.id},a.id)).rejects.toThrow('Acesso');
+ await db.exec(`set test.uid='${id(1)}'`);
+ await expect(manager('download',{file_id:id(9999)},a.id)).rejects.toThrow('Arquivo');
 });
