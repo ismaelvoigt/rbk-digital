@@ -70,3 +70,7 @@ it('cadastro sem CRM acompanha apenas os quatro documentos obrigatórios e não 
  expect(host.querySelector('[aria-label="Resumo do cadastro"]')?.textContent).toContain('4 de 4 documentos obrigatórios selecionados');
  await submit();expect(authorizations).toHaveLength(1);expect(authorizations[0]).not.toHaveProperty('crm');expect(authorizations[0]).not.toHaveProperty('crm_uf');
 });
+it('salva o dia de Brasília depois da virada UTC e preserva essa data nas tentativas',async()=>{
+ vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-11-02T01:25:21.512Z'));
+ try{await fillAndAttach();fail=true;await submit();expect(authorizations[0].data_autorizacao).toBe('2026-11-01');vi.setSystemTime(new Date('2026-11-02T03:25:21.512Z'));fail=false;await submit();expect(authorizations).toHaveLength(1);expect(authorizations[0].data_autorizacao).toBe('2026-11-01');expect(rows.size).toBe(4);}finally{vi.useRealTimers();}
+});
