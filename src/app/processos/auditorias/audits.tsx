@@ -191,7 +191,6 @@ export default function Audits() {
             <div className="aud-brand">
               <RbkBrand compact light />
             </div>
-            <span className="aud-secure">Gestor RBK · Processos</span>
           </div>
 
         </div>
