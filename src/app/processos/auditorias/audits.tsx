@@ -8,6 +8,7 @@ import { managerApi } from "../../../lib/auditoria/client";
 import { bytes, date, type Summary } from "../../../lib/auditoria/domain";
 import "./auditoria.css";
 import type { DeliveryResult } from "../../../lib/convites/types";
+import DownloadLotes from "./download-lotes";
 import ContactMessages from "./contact-messages";
 import OfficeAttachment from "./office-attachment";
 import PortalQr from "./portal-qr";
@@ -542,6 +543,7 @@ export default function Audits() {
               <section className="aud-card">
                 <div className="aud-row">
                   <h2>Autorizações · Documentos recebidos</h2>
+                    <DownloadLotes auditId={detail.audit.id} disabled={!detail.batches.some(b=>b.completed_at && b.files.some(f=>f.received_at))} />
                   <div className="aud-actions"><button disabled={busy} onClick={() => void load()}>Atualizar</button><button className="aud-primary" disabled={busy} onClick={() => void generateReport()}>{busy ? "Aguarde…" : "Gerar relatório"}</button></div>
                 </div>
                 {!detail.batches.length && <p>Aguardando o primeiro envio.</p>}
@@ -549,6 +551,7 @@ export default function Audits() {
                   <article className="aud-batch" key={b.id}>
                     <div className="aud-row">
                       <h3>Lote {b.number}</h3>
+                      <DownloadLotes auditId={detail.audit.id} batchId={b.id} number={b.number} disabled={!b.completed_at || !b.files.some(f=>f.received_at)} />
                       <span
                         className={`aud-badge ${b.completed_at ? "green" : ""}`}
                       >
@@ -597,7 +600,7 @@ export default function Audits() {
                   </article>
                 ))}
                 <small>
-                  Os arquivos ficam disponíveis após a confirmação do recebimento.
+                  Os arquivos ficam disponíveis após a confirmação do recebimento. O ZIP contém uma pasta por lote concluído. Em downloads grandes ou conexões lentas, prefira baixar um lote por vez.
                 </small>
               </section>
             )}
