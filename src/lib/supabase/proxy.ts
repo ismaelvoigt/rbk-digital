@@ -85,7 +85,7 @@ export async function updateSession(request: NextRequest) {
     pathname === "/redefinir-senha" ||
     pathname === "/manifest.webmanifest" ||
     // A rota administrativa valida seu próprio Authorization Bearer.
-    pathname === "/api/equipe" || pathname === "/api/usuarios" || pathname === "/api/usuarios/exclusao" || pathname === "/api/usuarios/acesso" || pathname === "/api/usuarios/remover" ||
+    pathname === "/api/equipe" || pathname === "/api/usuarios" || pathname === "/api/usuarios/exclusao" || pathname === "/api/usuarios/convite" || pathname === "/api/usuarios/acesso" || pathname === "/api/usuarios/remover" ||
     pathname === "/api/processos" || pathname.startsWith("/api/processos/") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon")
