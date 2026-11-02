@@ -2,6 +2,7 @@
 
 import {AcessoFarmacia} from "../../../../components/AcessoFarmacia";
 import {LocalidadeFields} from "../../../../components/LocalidadeFields";
+import {ReenviarConvite} from "../../../../components/ReenviarConvite";
 import Link from "next/link";
 import { formatTelefone, normalizeTelefone } from "../../../../lib/cadastro/telefone";
 import { useRetornoFarmacias } from "../../../../lib/usuarios/useRetornoFarmacias";
@@ -510,6 +511,8 @@ export default function EditarCadastroFarmaciaPage() {
                 Farmácia inativa perde o acesso, mas o histórico de
                 autorizações e documentos permanece preservado.
               </p>
+              {cadastro && <ReenviarConvite key={`${cadastro.id}:${cadastro.email}`} id={cadastro.id} emailSalvo={cadastro.email ?? ""} emailAtual={email} disabled={salvando || !cadastro.email || status !== 'active' || cadastro.status !== 'active'}/>}
+
             </div>
           </section>
 

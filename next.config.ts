@@ -25,6 +25,7 @@ const nextConfig: NextConfig = {
       "./node_modules/pdfjs-dist/**/*",
       "./node_modules/@napi-rs/canvas*/**/*",
     ],
+    "/api/usuarios/convite": ["./public/guias/RBK_Digital_Guia_Tela_Inicial.pdf"],
     "/api/usuarios": ["./public/guias/RBK_Digital_Guia_Tela_Inicial.pdf"],
     "/portal/credenciamento": ["./src/lib/credenciamento/form.html"],
   },
