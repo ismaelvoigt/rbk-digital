@@ -2,14 +2,14 @@
 import React,{act} from 'react';
 import {createRoot,type Root} from 'react-dom/client';
 import {beforeEach,afterEach,expect,it,vi} from 'vitest';
-const m=vi.hoisted(()=>({api:vi.fn(),upload:vi.fn(),push:vi.fn()}));
-vi.mock('next/navigation',()=>({useSearchParams:()=>new URLSearchParams(),useRouter:()=>({push:m.push})}));
+const m=vi.hoisted(()=>({api:vi.fn(),upload:vi.fn(),push:vi.fn(),query:""}));
+vi.mock('next/navigation',()=>({useSearchParams:()=>new URLSearchParams(m.query),useRouter:()=>({push:m.push})}));
 vi.mock('../src/lib/auditoria/client',()=>({managerApi:m.api}));
 vi.mock('../src/lib/auditoria/office',()=>({uploadOffice:m.upload,validateOffice:()=>{}}));
 import Audits from '../src/app/processos/auditorias/audits';
 Object.assign(globalThis,{React,IS_REACT_ACT_ENVIRONMENT:true});
 let host:HTMLDivElement,root:Root;
-beforeEach(()=>{vi.resetAllMocks();host=document.createElement('div');document.body.append(host);root=createRoot(host);m.api.mockImplementation(async(path,method,payload)=>method!=='POST'?[]:path===''?(payload.confirm_duplicate?{id:'second'}:{confirmation_required:true,message:'Já existe uma auditoria em andamento. Deseja criar outra?'}):{created:true});});
+beforeEach(()=>{vi.resetAllMocks();m.query="";host=document.createElement('div');document.body.append(host);root=createRoot(host);m.api.mockImplementation(async(path,method,payload)=>method!=='POST'?[]:path===''?(payload.confirm_duplicate?{id:'second'}:{confirmation_required:true,message:'Já existe uma auditoria em andamento. Deseja criar outra?'}):{created:true});});
 afterEach(async()=>{await act(async()=>root.unmount());host.remove();vi.restoreAllMocks();});
 it.each([true,false])('audit confirmation %s keeps the existing process and only uploads into the accepted new one',async accept=>{
  window.confirm=vi.fn(()=>accept);
@@ -46,4 +46,20 @@ it('requires the selected audit CNPJ, clears it when switching audit, and sends 
  expect(region().textContent).toContain('Referência B');
  await type('99.888.777/0001-66');await act(async()=>confirm().click());
  expect(m.api).toHaveBeenCalledWith('/two/delete_empty','POST',{cnpj:'99888777000166',confirmed:true});
+});
+
+it('lets the manager download received files without quarantine, keeping incomplete files disabled',async()=>{
+ m.query='id=one';
+ const stamp='2026-11-01T12:00:00Z';
+ const files=['pending','error','clean','infected','rejected'].map((scan,i)=>({id:`file-${i}`,filename:`arquivo-${i}.pdf`,size:10,mime:'application/pdf',scan,received_at:stamp}));
+ files.push({id:'incomplete',filename:'incompleto.pdf',size:10,mime:'application/pdf',scan:'pending',received_at:null as any});
+ const detail={audit:{id:'one',cnpj:'11222333000181',reference:'Auditoria teste',pharmacy:'Farmácia',collection:'open'},total_files:5,total_bytes:50,last_received:stamp,batches:[{id:'batch',number:1,started_at:stamp,completed_at:stamp,files}],offices:[],events:[]};
+ m.api.mockResolvedValue(detail);
+ await act(async()=>root.render(<Audits/>));
+ await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Autorizações')!.click());
+ expect(host.textContent).not.toContain('Quarentena');expect(host.textContent).not.toContain('Download seguro');
+ const downloads=[...host.querySelectorAll('button')].filter(b=>b.textContent==='Baixar');
+ expect(downloads).toHaveLength(6);
+ expect(downloads.slice(0,5).every(b=>!b.disabled)).toBe(true);expect(downloads[5].disabled).toBe(true);
+ await act(async()=>downloads[0].click());expect(m.api).toHaveBeenCalledWith('/one/download','POST',{file_id:'file-0'});
 });

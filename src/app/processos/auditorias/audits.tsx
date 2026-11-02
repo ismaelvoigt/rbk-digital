@@ -38,8 +38,8 @@ const events: Record<string, string> = {
   upload_ticket: "Envio autorizado",
   download: "Download solicitado",
   scan_clean: "Verificação de segurança concluída",
-  scan_infected: "Arquivo bloqueado",
-  scan_error: "Verificação pendente",
+  scan_infected: "Sinalização registrada pelo scanner",
+  scan_error: "Verificação em segundo plano sem conclusão",
 };
 export default function Audits() {
   const params = useSearchParams(),
@@ -567,7 +567,6 @@ export default function Audits() {
                           <tr>
                             <th>Arquivo</th>
                             <th>Tamanho</th>
-                            <th>Segurança</th>
                             <th>Ação</th>
                           </tr>
                         </thead>
@@ -577,26 +576,17 @@ export default function Audits() {
                               <td>{f.filename}</td>
                               <td>{bytes(f.size)}</td>
                               <td>
-                                {f.scan === "clean"
-                                  ? "Verificado"
-                                  : ["infected", "rejected"].includes(
-                                        f.scan || "",
-                                      )
-                                    ? "Bloqueado"
-                                    : "Quarentena"}
-                              </td>
-                              <td>
                                 <button
                                   disabled={
                                     busy ||
-                                    f.scan !== "clean" ||
+                                    !f.received_at ||
                                     !b.completed_at
                                   }
                                   onClick={() =>
                                     void act("download", { file_id: f.id })
                                   }
                                 >
-                                  Download seguro
+                                  Baixar
                                 </button>
                               </td>
                             </tr>
@@ -607,8 +597,7 @@ export default function Audits() {
                   </article>
                 ))}
                 <small>
-                  Recebimento não significa autenticidade. Downloads são
-                  liberados somente após verificação de segurança.
+                  Os arquivos ficam disponíveis após a confirmação do recebimento.
                 </small>
               </section>
             )}
