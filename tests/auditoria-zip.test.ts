@@ -42,3 +42,12 @@ it('keeps batches separated and writes ZIP64 directory records for large archive
  const bytes=new Uint8Array(await new Response(zipStream(selected,async()=>new Response(new Uint8Array([1,2,3])).body!)).arrayBuffer());
  expect(bytes.some((v,i)=>v===0x50&&bytes[i+1]===0x4b&&bytes[i+2]===0x06&&bytes[i+3]===0x06)).toBe(true);
 });
+
+it('exports only the current received office alongside completed batches, even without batches',()=>{
+ const office=(id:string,created_at:string,extra={})=>({...file(id,id+'.pdf'),source:'office',batch_id:null,storage_path:`${aid}/oficios/${id}.pdf`,created_at,...extra});
+ const offices=[office('old','2026-10-01'),office('new','2026-11-01'),office('pending','2026-11-02',{received_at:null})];
+ expect(selectZipFiles({...detail,offices},aid).map(f=>f.name)).toEqual(['Oficio/new.pdf','Lote 001/original.pdf','Lote 001/original (2).pdf','Lote 001/.._CON.pdf']);
+ expect(selectZipFiles({...detail,offices},aid,batch).map(f=>f.name)).not.toContain('Oficio/new.pdf');
+ expect(selectZipFiles({...detail,batches:[],offices},aid).map(f=>f.name)).toEqual(['Oficio/new.pdf']);
+ expect(()=>selectZipFiles({...detail,offices:[office('bad','2026-11-01',{storage_path:'other/secret'})]},aid)).toThrow();
+});

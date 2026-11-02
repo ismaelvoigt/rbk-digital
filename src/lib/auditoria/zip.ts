@@ -2,8 +2,8 @@ import { ZipWriter } from '@zip.js/zip.js';
 import { PortalError } from './server';
 
 export type ZipFile = { name: string; path: string; size: number };
-type FileRow = { id: string; filename: string; size: number; received_at: string | null; source: string; storage_path: string; audit_id: string; batch_id: string };
-type ZipDetail = { audit: { id: string }; batches: { id: string; number: number; completed_at: string | null; files: FileRow[] }[] };
+type FileRow = { id: string; filename: string; size: number; received_at: string | null; source: string; storage_path: string; audit_id: string; batch_id: string | null };
+type ZipDetail = { audit: { id: string }; offices?: (FileRow & { created_at: string })[]; batches: { id: string; number: number; completed_at: string | null; files: FileRow[] }[] };
 function safeName(value: string) {
   let name = value.normalize('NFC').replace(/[<>:"/\\|?*\x00-\x1f\x7f]/g, '_').replace(/[. ]+$/, '').trim();
   if (!name || name === '.' || name === '..') name = 'documento';
@@ -13,10 +13,17 @@ function safeName(value: string) {
 export function selectZipFiles(detail: ZipDetail, auditId: string, batchId?: string): ZipFile[] {
   if (detail.audit.id !== auditId) throw new PortalError(403, 'Você não tem acesso a esta auditoria.');
   const batches = batchId ? detail.batches.filter(b => b.id === batchId) : detail.batches;
-  if (!batches.length) throw new PortalError(404, 'Nenhum lote disponível.');
+  if (batchId && !batches.length) throw new PortalError(404, 'Nenhum lote disponível.');
   if (batchId && !batches[0].completed_at) throw new PortalError(409, 'Aguarde a conclusão do envio deste lote.');
   const result: ZipFile[] = [];
   const used = new Set<string>();
+  if (!batchId) {
+    const office = [...(detail.offices || [])].filter(f => f.received_at).sort((a,b) => b.created_at.localeCompare(a.created_at))[0];
+    if (office) {
+      if (office.source !== 'office' || office.audit_id !== auditId || office.batch_id !== null || !office.storage_path.startsWith(`${auditId}/oficios/`) || !Number.isSafeInteger(office.size) || office.size < 1) throw new Error('Invalid audit office');
+      result.push({name:`Oficio/${safeName(office.filename)}`,path:office.storage_path,size:office.size});
+    }
+  }
   for (const batch of [...batches].sort((a,b) => a.number - b.number)) {
     if (!batch.completed_at) continue;
     if (!Number.isSafeInteger(batch.number) || batch.number < 1) throw new Error('Invalid batch number');
@@ -33,7 +40,7 @@ export function selectZipFiles(detail: ZipDetail, auditId: string, batchId?: str
       result.push({name, path:file.storage_path, size:file.size});
     }
   }
-  if (!result.length) throw new PortalError(404, 'Nenhum arquivo recebido em lotes concluídos.');
+  if (!result.length) throw new PortalError(404, 'Nenhum ofício ou documento recebido disponível.');
   return result;
 }
 

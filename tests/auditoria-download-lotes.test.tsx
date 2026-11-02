@@ -10,7 +10,7 @@ it('navigates to a native ZIP download for the chosen batch or all batches witho
  await act(async()=>root.render(<><DownloadLotes auditId="audit" batchId="batch" number={2}/><DownloadLotes auditId="audit"/><DownloadLotes auditId="audit" batchId="open" number={3} disabled/></>));
  const links=[...host.querySelectorAll('a')];expect(links).toHaveLength(2);
  expect(links[0].getAttribute('href')).toBe('/api/auditorias/arquivo-zip?auditoria=audit&lote=batch');expect(links[0].textContent).toBe('Baixar lote');expect(links[0].getAttribute('aria-label')).toContain('2');
- expect(links[1].getAttribute('href')).toBe('/api/auditorias/arquivo-zip?auditoria=audit');expect(links[1].textContent).toBe('Baixar todos os lotes');
+ expect(links[1].getAttribute('href')).toBe('/api/auditorias/arquivo-zip?auditoria=audit');expect(links[1].textContent).toBe('Exportar auditoria completa');
  expect(host.querySelector('button')?.disabled).toBe(true);
  }finally{await act(async()=>root.unmount());host.remove();}
 });

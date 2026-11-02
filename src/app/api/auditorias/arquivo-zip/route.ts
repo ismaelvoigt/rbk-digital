@@ -40,7 +40,7 @@ export async function GET(request:NextRequest){
   const first=await open(files[0],request.signal);
   const stream=zipStream(files,(file,signal)=>file===files[0]?Promise.resolve(first):open(file,signal),request.signal);
   const cnpj=String(data.audit.cnpj||'').replace(/[^A-Za-z0-9]/g,'')||aid;
-  const suffix=batch?`lote-${data.batches.find((b:{id:string})=>b.id===batch).number}`:'todos-lotes';
+  const suffix=batch?`lote-${data.batches.find((b:{id:string})=>b.id===batch).number}`:'completa';
   return withCookies(new Response(stream,{headers:{...headers,'Content-Type':'application/zip','Content-Disposition':`attachment; filename="auditoria-${cnpj}-${suffix}.zip"`,'X-Accel-Buffering':'no'}}));
  }catch(error){return withCookies(failure(error));}
 }
