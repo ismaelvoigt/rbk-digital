@@ -80,11 +80,11 @@ describe("integração do ambiente da farmácia", () => {
 
   it("consulta deve filtrar as autorizações pelo usuário autenticado", async () => {
     const conteudo = await fs.readFile(
-      "src/app/autorizacoes/page.tsx",
+      "src/lib/autorizacoes/pesquisa.ts",
       "utf-8"
     );
 
-    expect(conteudo).toContain('.eq("farm_id", perfilUsuario.farm_id)');
+    expect(conteudo).toMatch(/\.eq\(['"]farm_id['"],\s*scope\.farmId\)/);
   });
 });
 
