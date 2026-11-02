@@ -51,7 +51,11 @@ const row = (id: string) => ({
 });
 beforeEach(() => {
   vi.clearAllMocks();
-  m.scope.mockResolvedValue({ actorId: "actor", farmId: "farm" });
+  m.scope.mockResolvedValue({
+    actorId: "actor",
+    farmId: "farm",
+    role: "gerente_farmacia",
+  });
   m.search.mockResolvedValue({ linhas: [row("a")], total: 21 });
   m.all.mockResolvedValue([row("a"), row("b")]);
   m.selected.mockImplementation(async (_c, _s, ids) => ids.map(row));
@@ -151,28 +155,90 @@ it("clears patient results, selection and ready PDFs on session change", async (
   expect(host.textContent).not.toContain("1 autorizações selecionadas");
 });
 
-it('ignores an older response after switching pharmacy and resets selection', async () => {
-  m.scope.mockImplementation(async (_client, farmId) => ({actorId:'actor',farmId:farmId||'farm'}));
-  let finish!: (value:any)=>void;
-  m.search.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
-  await act(async()=>root.render(<PesquisaAutorizacoes farmId="farm"/>));
-  await change('[aria-label="CPF do cliente"]','12345678901');
-  await act(async()=>{host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});
-  await act(async()=>root.render(<PesquisaAutorizacoes farmId="other"/>));
-  await act(async()=>finish({linhas:[row('a')],total:1}));
-  expect(host.textContent).not.toContain('111.111.111.111.111');
-  expect(host.textContent).toContain('0 autorizações selecionadas');
+it("ignores an older response after switching pharmacy and resets selection", async () => {
+  m.scope.mockImplementation(async (_client, farmId) => ({
+    actorId: "actor",
+    farmId: farmId || "farm",
+    role: "gerente_farmacia",
+  }));
+  let finish!: (value: any) => void;
+  m.search.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await act(async () => root.render(<PesquisaAutorizacoes farmId="farm" />));
+  await change('[aria-label="CPF do cliente"]', "12345678901");
+  await act(async () => {
+    host
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  await act(async () => root.render(<PesquisaAutorizacoes farmId="other" />));
+  await act(async () => finish({ linhas: [row("a")], total: 1 }));
+  expect(host.textContent).not.toContain("111.111.111.111.111");
+  expect(host.textContent).toContain("0 autorizações selecionadas");
 });
 
-it('keeps the earlier ready PDF available when a later part fails',async()=>{
-  m.all.mockResolvedValueOnce(Array.from({length:21},(_,i)=>row(String(i))));
-  await act(async()=>root.render(<PesquisaAutorizacoes/>));
-  await change('[aria-label="CPF do cliente"]','12345678901');await search();
-  await act(async()=>{button('Gerar PDF da pesquisa').click();await vi.dynamicImportSettled();});
-  const ready=host.querySelector<HTMLAnchorElement>('a[download^="autorizacoes-parte"]')!.href;
-  m.part.mockRejectedValueOnce(new Error('Falha no documento de teste.'));
-  const next=[...host.querySelectorAll('button')].find(b=>b.textContent?.startsWith('Gerar PDF parte 2'))!;
-  await act(async()=>{next.click();await vi.dynamicImportSettled();});
-  expect(host.querySelector('[role=alert]')?.textContent).toContain('Falha no documento');
-  expect(host.querySelector<HTMLAnchorElement>('a[download^="autorizacoes-parte"]')!.href).toBe(ready);
+it("keeps the earlier ready PDF available when a later part fails", async () => {
+  m.all.mockResolvedValueOnce(
+    Array.from({ length: 21 }, (_, i) => row(String(i))),
+  );
+  await act(async () => root.render(<PesquisaAutorizacoes />));
+  await change('[aria-label="CPF do cliente"]', "12345678901");
+  await search();
+  await act(async () => {
+    button("Gerar PDF da pesquisa").click();
+    await vi.dynamicImportSettled();
+  });
+  const ready = host.querySelector<HTMLAnchorElement>(
+    'a[download^="autorizacoes-parte"]',
+  )!.href;
+  m.part.mockRejectedValueOnce(new Error("Falha no documento de teste."));
+  const next = [...host.querySelectorAll("button")].find((b) =>
+    b.textContent?.startsWith("Gerar PDF parte 2"),
+  )!;
+  await act(async () => {
+    next.click();
+    await vi.dynamicImportSettled();
+  });
+  expect(host.querySelector("[role=alert]")?.textContent).toContain(
+    "Falha no documento",
+  );
+  expect(
+    host.querySelector<HTMLAnchorElement>('a[download^="autorizacoes-parte"]')!
+      .href,
+  ).toBe(ready);
+});
+
+it("keeps attendants on lean search without selection, month filters or PDF actions", async () => {
+  m.scope.mockResolvedValueOnce({
+    actorId: "actor",
+    farmId: "farm",
+    role: "operador",
+  });
+  await act(async () => root.render(<PesquisaAutorizacoes />));
+  expect(host.querySelector('[aria-label="Seleção acumulada"]')).toBeNull();
+  expect(host.querySelector('[aria-label="Filtro de data"]')).toBeNull();
+  expect(host.querySelector('[aria-label="Data inicial"]')).toBeTruthy();
+  expect(host.querySelector('[aria-label="Data final"]')).toBeTruthy();
+  await change('[aria-label="CPF do cliente"]', "12345678901");
+  await search();
+  expect(host.querySelector("input[type=checkbox]")).toBeNull();
+  expect(host.textContent).not.toContain("Gerar PDF");
+  expect(host.textContent).not.toContain("Selecionar página");
+  expect(host.textContent).toContain("Conferir documentação");
+});
+
+it.each([
+  "gerente_farmacia",
+  "administrador_farmacia",
+  "gestor_rbk",
+  "superadmin_rbk",
+])("enables management research for %s", async (role) => {
+  m.scope.mockResolvedValueOnce({ actorId: "actor", farmId: "farm", role });
+  await act(async () => root.render(<PesquisaAutorizacoes />));
+  expect(host.querySelector('[aria-label="Seleção acumulada"]')).toBeTruthy();
+  expect(host.querySelector('[aria-label="Filtro de data"]')).toBeTruthy();
 });

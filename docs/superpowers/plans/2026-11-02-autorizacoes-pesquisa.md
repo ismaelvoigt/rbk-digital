@@ -39,3 +39,9 @@ Ruling: compartilhar consulta e interface, substituindo duplicação das duas p�
 Revisão independente identificou uma janela de edição de CPF/data/número entre listagem e documentos. Corrigido com comparação dos metadados capturados e duas regressões observadas falhando antes da correção. Revisão de acompanhamento sem bloqueios.
 
 Validação: 687 testes aprovados; 3 falhas preexistentes por modelo privado de planilha ausente; 6 ignorados, incluindo os testes opcionais de ambiente/volume. TypeScript, lint e build aprovados. Teste real opcional de desenvolvimento aprovado com atendente/RLS; 45 autorizações e 42 PDFs fictícios confirmados. Listagem PDF de 60 registros renderizada e inspecionada visualmente, com três páginas e horário de Brasília. Publicação exclusivamente no desenvolvimento para aprovação do usuário.
+
+## Restrição de perfis confirmada pelo usuário
+
+Seleção acumulada, filtros rápidos dia/mês e relatórios são exclusivos de gestor/superadmin RBK, gerente_farmacia e administrador_farmacia (incluindo legado farmacia). Atendente mantém consulta enxuta CPF/número/datas e conferência de documentos; a paginação continua em 20 para limitar o carregamento. O papel é validado novamente nos serviços de relatório, e uma mudança de papel exige atualizar o contexto. A conta fictícia de atendente não é promovida; os dados de teste da mesma farmácia podem ser consultados pelo gestor RBK.
+
+Validação após a restrição de perfis: 694 testes aprovados, 3 falhas preexistentes, 6 opcionais ignorados; TypeScript, lint e build aprovados. Teste real no desenvolvimento comprova consulta do atendente e recusa de agregação/seleção para relatórios. Matriz visual dos quatro perfis de gestão e ausência de controles no atendente cobertas. Revisão independente do ajuste sem bloqueios.

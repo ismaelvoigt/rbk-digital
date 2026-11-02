@@ -9,7 +9,7 @@ const m = vi.hoisted(() => ({
 }));
 vi.mock("../src/lib/autorizacoes/pesquisa", async (original) => ({
   ...(await original<any>()),
-  validarEscopoPesquisa: m.validate,
+  validarGestaoPesquisa: m.validate,
   revalidarSelecao: m.revalidate,
 }));
 vi.mock("../src/lib/autorizacoes/pdf", () => ({
@@ -71,7 +71,7 @@ it("includes documents, keeps authorizations without attachments in the list, an
   };
   const result = await gerarPartePesquisa(
     mock,
-    { actorId: "actor", farmId: "farm" },
+    { actorId: "actor", farmId: "farm", role: "gerente_farmacia" },
     rows.slice(0, 1),
     "Parte 1",
     undefined,
@@ -89,7 +89,7 @@ it("splits oversized selections before generating a misleading partial report", 
   await expect(
     gerarPartePesquisa(
       {} as any,
-      { actorId: "actor", farmId: "farm" },
+      { actorId: "actor", farmId: "farm", role: "gerente_farmacia" },
       rows,
       "Parte 1",
     ),
@@ -104,7 +104,7 @@ it("refuses metadata changes between the general listing and a later document pa
   await expect(
     gerarPartePesquisa(
       { from } as any,
-      { actorId: "actor", farmId: "farm" },
+      { actorId: "actor", farmId: "farm", role: "gerente_farmacia" },
       rows.slice(0, 1),
       "Parte 1",
     ),
@@ -123,7 +123,7 @@ it("refuses a metadata change between selection validation and the document head
   await expect(
     gerarPartePesquisa(
       { from: () => q } as any,
-      { actorId: "actor", farmId: "farm" },
+      { actorId: "actor", farmId: "farm", role: "gerente_farmacia" },
       rows.slice(0, 1),
       "Parte 1",
     ),
@@ -146,9 +146,21 @@ it("includes every row of a multi-page listing", async () => {
     writeFileSync("/private/tmp/rbk-pesquisa-listagem-qa.pdf", bytes);
 });
 
-it('keeps an authorization with no attachments in the PDF list without pretending documents were included',async()=>{
- const q:any={select:()=>q,eq:()=>q,order:()=>q,range:async()=>({data:[],error:null}),single:async()=>({data:rows[0],error:null})};
- const r=await gerarPartePesquisa({from:()=>q} as any,{actorId:'actor',farmId:'farm'},rows.slice(0,1),'Sem anexos');
- expect((await PDFDocument.load(r.bytes)).getPageCount()).toBe(1);
- expect(r.semDocumentos).toEqual(['0']);expect(m.gerar).not.toHaveBeenCalled();
+it("keeps an authorization with no attachments in the PDF list without pretending documents were included", async () => {
+  const q: any = {
+    select: () => q,
+    eq: () => q,
+    order: () => q,
+    range: async () => ({ data: [], error: null }),
+    single: async () => ({ data: rows[0], error: null }),
+  };
+  const r = await gerarPartePesquisa(
+    { from: () => q } as any,
+    { actorId: "actor", farmId: "farm", role: "gerente_farmacia" },
+    rows.slice(0, 1),
+    "Sem anexos",
+  );
+  expect((await PDFDocument.load(r.bytes)).getPageCount()).toBe(1);
+  expect(r.semDocumentos).toEqual(["0"]);
+  expect(m.gerar).not.toHaveBeenCalled();
 });
