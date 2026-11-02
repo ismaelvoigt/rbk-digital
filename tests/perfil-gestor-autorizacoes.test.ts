@@ -16,20 +16,14 @@ describe("Perfil do gestor — autorizações da farmácia", () => {
     );
 
     expect(source).toContain("Autorizações da farmácia");
-    expect(source).toContain("Pesquisar autorizações");
+    expect(await readFile("src/components/autorizacoes/PesquisaAutorizacoes.tsx", "utf8")).toContain("Pesquisar autorizações");
   });
 
-  it("deve usar o farm_id para consultar as autorizações", async () => {
-    const source = await readFile(
-      "src/app/usuarios/[id]/autorizacoes/page.tsx",
-      "utf8"
-    );
-
-    expect(source).toContain("farm_id");
-    expect(source).toContain('.eq("farm_id", farmId)');
+  it("deve usar farm_id na consulta compartilhada", async () => {
+    const source = await readFile("src/lib/autorizacoes/pesquisa.ts", "utf8");
+    expect(source).toMatch(/\.eq\(['"]farm_id['"],\s*scope\.farmId\)/);
     expect(source).not.toContain('.eq("user_id", usuarioId)');
   });
-
   it("deve tratar farms como objeto, não como array", async () => {
     const source = await readFile(
       "src/app/usuarios/[id]/autorizacoes/page.tsx",
