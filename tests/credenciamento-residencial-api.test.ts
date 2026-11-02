@@ -20,3 +20,7 @@ test.each([-1,11,1.5,'10'])('rejects invalid category %s', async kind => {
  expect((await POST(request(kind))).status).toBe(400);
 });
 function request(kind: unknown) { return new Request('https://example.test/api/credenciamento', { method: 'POST', body: JSON.stringify({op:'init', token:'test', file:{ id:'11111111-1111-4111-8111-111111111111', name:'residencial.pdf', mime:'application/pdf', size:100, kind, fingerprint:'a'.repeat(64) }}) }); }
+test.each([{manager:false,confirmed:true,status:403},{manager:true,confirmed:false,status:400},{manager:true,confirmed:true,status:200}])('remove enforces manager and confirmation: %j',async({manager,confirmed,status})=>{
+ const response=await POST(new Request('https://example.test/api/credenciamento',{method:'POST',body:JSON.stringify({op:'remove',manager,confirmed,id:'11111111-1111-4111-8111-111111111111'})}));
+ expect(response.status).toBe(status);
+});
