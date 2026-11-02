@@ -1,4 +1,5 @@
 "use client";
+import {dataISOBrasilia} from "../../lib/datas/brasilia";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
@@ -173,7 +174,7 @@ export default function NovaAutorizacao() {
 
       if (!tentativa.current) {
         const id = crypto.randomUUID();
-        const data = new Date().toISOString().slice(0,10);
+        const data = dataISOBrasilia();
         const envios:EnvioDocumento[] = [];
         for (const categoria of ["documento_cliente","receita_medica","cupom_fiscal","cupom_vinculado","outros"] as Categoria[]) {
           const selecionados = categoria === 'outros' ? outrosArquivos : arquivos[categoria] ? [arquivos[categoria]!] : [];

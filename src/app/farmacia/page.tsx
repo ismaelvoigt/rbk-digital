@@ -1,4 +1,5 @@
 "use client";
+import {dataISOBrasilia,FUSO_BRASILIA} from "../../lib/datas/brasilia";
 import {nomeInicialFarmacia} from "../../lib/usuarios/nomeInicial";
 
 import { useRouter } from "next/navigation";
@@ -86,8 +87,7 @@ export default function FarmaciaPage() {
       setPerfil(profile.perfil);
       if (!farm.error) setFarmInfo(farm.data);
 
-      const inicioHoje = new Date();
-      inicioHoje.setHours(0, 0, 0, 0);
+      const hojeBrasilia = dataISOBrasilia();
 
       const autorizacoes = await listarPaginas<AutorizacaoResumo>((inicio,fim)=>supabase
         .from('autorizacoes').select('id,numero_autorizacao,cpf_cliente,created_at')
@@ -102,17 +102,16 @@ export default function FarmaciaPage() {
       }
       if (!ativo) return;
 
-      const hojeTimestamp = inicioHoje.getTime();
 
       setAutorizacoesHoje(
         autorizacoes.filter(
-          (item) => new Date(item.created_at).getTime() >= hojeTimestamp
+          (item) => dataISOBrasilia(new Date(item.created_at)) === hojeBrasilia
         ).length
       );
 
       setDocumentosHoje(
         documentos.filter(
-          (item) => new Date(item.created_at).getTime() >= hojeTimestamp
+          (item) => dataISOBrasilia(new Date(item.created_at)) === hojeBrasilia
         ).length
       );
 
@@ -316,6 +315,7 @@ export default function FarmaciaPage() {
 
                     <p className="mt-1 text-sm text-gray-500">
                       {new Intl.DateTimeFormat("pt-BR", {
+                        timeZone: FUSO_BRASILIA,
                         dateStyle: "short",
                         timeStyle: "short",
                       }).format(new Date(ultimaAutorizacao.created_at))}
