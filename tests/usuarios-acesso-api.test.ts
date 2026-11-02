@@ -49,10 +49,12 @@ beforeEach(() => {
   m.token = true;
   m.rpc.mockResolvedValue({ data: { completed: true }, error: null });
 });
-it("recusa sem sessão, sem permissão RBK ou RBK inativo antes de acessar ações privilegiadas", async () => {
-  expect((await GET(req("GET", {}, false))).status).toBe(401);
+it("recusa alteração de perfil sem sessão, sem RBK ou com RBK inativo", async () => {
+  expect(
+    (await PATCH(req("PATCH", { id, acao: "promover" }, false))).status,
+  ).toBe(401);
   m.rbk = false;
-  expect((await DELETE(req("DELETE", { id, email: "x@x.co" }))).status).toBe(
+  expect((await PATCH(req("PATCH", { id, acao: "promover" }))).status).toBe(
     403,
   );
   m.rbk = true;
@@ -62,23 +64,12 @@ it("recusa sem sessão, sem permissão RBK ou RBK inativo antes de acessar açõ
   );
   expect(m.rpc).not.toHaveBeenCalled();
 });
-it("usa identidade validada do ator e revalida exclusão no banco", async () => {
-  expect(
-    (await DELETE(req("DELETE", { id, email: "x@x.co", p_actor: "spoofed" })))
-      .status,
-  ).toBe(200);
-  expect(m.rpc).toHaveBeenCalledWith("usuario_sem_uso_excluir", {
-    p_actor: "actor-validated",
-    p_id: id,
-    p_action: "delete",
-    p_email: "x@x.co",
-  });
-  m.rpc.mockResolvedValue({
-    error: { code: "P0001", message: "Documentos vinculados." },
-  });
-  const r = await DELETE(req("DELETE", { id, email: "x@x.co" }));
-  expect(r.status).toBe(409);
-  expect(await r.json()).toEqual({ error: "Documentos vinculados." });
+it("desativa a exclusão individual antiga e exige o fluxo com CNPJ", async () => {
+  expect((await GET()).status).toBe(410);
+  const r = await DELETE();
+  expect(r.status).toBe(410);
+  expect((await r.json()).error).toContain("CNPJ");
+  expect(m.rpc).not.toHaveBeenCalled();
 });
 it("promoção não envia plano, e ações/planos inválidos são recusados", async () => {
   expect(

@@ -46,3 +46,8 @@ it('closes timed-out connections instead of retrying a possibly accepted invitat
  await vi.advanceTimersByTimeAsync(15000);await pending;
  expect(smtp.send).toHaveBeenCalledTimes(1);expect(smtp.close).toHaveBeenCalled();
 });
+it('renova acesso sem apresentar o cliente como novo atendente',async()=>{
+ const send=await preparePharmacyInvitation({tipo_convite:'acesso',nome:'Responsável',perfil:'administrador_farmacia'});
+ await send('client@example.com','Farmácia Alfa','https://rbk-digital.vercel.app/redefinir-senha?type=recovery&token_hash=private');
+ const mail=smtp.send.mock.calls[0][0];expect(mail.subject).toBe('Seu acesso à RBK Digital');expect(mail.html).toContain('Definir senha e acessar');expect(mail.text).not.toContain('Seu acesso inicial será de atendente');expect(mail.html).not.toContain('Para concluir seu cadastro');
+});
