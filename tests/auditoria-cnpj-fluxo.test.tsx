@@ -29,3 +29,21 @@ it.each([true,false])('audit confirmation %s keeps the existing process and only
  else {expect(m.upload).not.toHaveBeenCalled();expect(m.push).not.toHaveBeenCalled();expect(host.textContent).toContain('Nova auditoria');}
  }finally{vi.unstubAllGlobals();}
 });
+it('requires the selected audit CNPJ, clears it when switching audit, and sends confirmation',async()=>{
+ const sample=(id:string,cnpj:string,reference:string)=>({audit:{id,cnpj,reference,pharmacy:'Farmácia teste',created_at:'2026-11-01T12:00:00Z',collection:'open',status:'created'},can_delete:true,total_files:0,total_bytes:0,batches:[]});
+ m.api.mockResolvedValue([sample('one','11222333000181','Referência A'),sample('two','99888777000166','Referência B')]);
+ await act(async()=>root.render(<Audits/>));
+ const deletes=()=>[...host.querySelectorAll('button')].filter(b=>b.textContent==='Excluir');
+ await act(async()=>deletes()[0].click());
+ const region=()=>host.querySelector('[aria-label="Confirmar exclusão"]')!;
+ expect(region().textContent).toContain('Referência A');
+ const confirm=()=>[...region().querySelectorAll('button')].find(b=>b.textContent==='Confirmar exclusão')!;
+ expect(confirm().disabled).toBe(true);
+ async function type(value:string){const input=region().querySelector('input')!;await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}));});}
+ await type('99.888.777/0001-66');expect(confirm().disabled).toBe(true);
+ await type('11.222.333/0001-81');expect(confirm().disabled).toBe(false);
+ await act(async()=>deletes()[1].click());expect(confirm().disabled).toBe(true);
+ expect(region().textContent).toContain('Referência B');
+ await type('99.888.777/0001-66');await act(async()=>confirm().click());
+ expect(m.api).toHaveBeenCalledWith('/two/delete_empty','POST',{cnpj:'99888777000166',confirmed:true});
+});

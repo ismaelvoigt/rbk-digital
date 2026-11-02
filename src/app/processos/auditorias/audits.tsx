@@ -68,6 +68,7 @@ export default function Audits() {
   const [searchDraft, setSearchDraft] = useState("");
   const [searchCnpj, setSearchCnpj] = useState("");
   const [removeCandidate, setRemoveCandidate] = useState<Summary | null>(null);
+  const [deleteCnpj, setDeleteCnpj] = useState("");
   const [removedNotice, setRemovedNotice] = useState("");
   const [officeProgress, setOfficeProgress] = useState(0);
   const [usage, setUsage] = useState<
@@ -168,11 +169,11 @@ export default function Audits() {
     }
   }
   async function removeEmptyAudit() {
-    if (!removeCandidate || busy) return;
+    if (!removeCandidate || busy || normalizeCnpj(deleteCnpj).length !== 14 || normalizeCnpj(deleteCnpj) !== normalizeCnpj(removeCandidate.audit.cnpj)) return;
     setBusy(true);
     setError("");
     try {
-      await managerApi(`/${removeCandidate.audit.id}/delete_empty`, "POST", {});
+      await managerApi(`/${removeCandidate.audit.id}/delete_empty`, "POST", {cnpj:normalizeCnpj(deleteCnpj),confirmed:true});
       setRemoveCandidate(null);
       setRemovedNotice("Auditoria excluída da carteira. O link de envio foi invalidado.");
       if (items.length === 1 && page > 0) setPage(page - 1);
@@ -299,9 +300,14 @@ export default function Audits() {
               {removeCandidate && (
                 <div className="aud-card aud-delete-warning" role="region" aria-label="Confirmar exclusão">
                   <h3>Excluir auditoria de {removeCandidate.audit.pharmacy}?</h3>
+                  <p>CNPJ: <strong>{formatCnpj(removeCandidate.audit.cnpj)}</strong> · Referência: <strong>{removeCandidate.audit.reference || "Sem referência"}</strong></p>
+                  <p>Identificador da auditoria: {removeCandidate.audit.id}</p>
                   <p>Ela sairá da carteira e seu link será invalidado. O cadastro da farmácia, o ofício e o histórico serão preservados. Só é possível excluir se a farmácia não iniciou nenhum envio.</p>
+                  <label>Digite o CNPJ desta auditoria para confirmar
+                    <input value={deleteCnpj} disabled={busy} autoComplete="off" maxLength={18} placeholder="00.000.000/0000-00" onChange={(e) => setDeleteCnpj(formatCnpj(e.target.value))} />
+                  </label>
                   <div className="aud-actions">
-                    <button className="aud-delete-confirm" disabled={busy} onClick={() => void removeEmptyAudit()}>{busy ? "Excluindo…" : "Confirmar exclusão"}</button>
+                    <button className="aud-delete-confirm" disabled={busy || normalizeCnpj(deleteCnpj).length !== 14 || normalizeCnpj(deleteCnpj) !== normalizeCnpj(removeCandidate.audit.cnpj)} onClick={() => void removeEmptyAudit()}>{busy ? "Excluindo…" : "Confirmar exclusão"}</button>
                     <button disabled={busy} onClick={() => setRemoveCandidate(null)}>Cancelar</button>
                   </div>
                 </div>
@@ -355,7 +361,7 @@ export default function Audits() {
                         </td>
                         <td>
                           {s.can_delete === true ? (
-                            <button disabled={busy} aria-label={`Excluir auditoria de ${s.audit.pharmacy}`} onClick={() => { setRemovedNotice(""); setRemoveCandidate(s); }}>Excluir</button>
+                            <button disabled={busy} aria-label={`Excluir auditoria de ${s.audit.pharmacy}`} onClick={() => { setRemovedNotice(""); setDeleteCnpj(""); setRemoveCandidate(s); }}>Excluir</button>
                           ) : <small>Exclusão bloqueada: envio iniciado</small>}
                         </td>
                       </tr>
