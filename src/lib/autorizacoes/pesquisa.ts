@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { resolveRole } from "../auth/rbac";
+import { resolveRole, type RbkRole } from "../auth/rbac";
 export const PAGINA_AUTORIZACOES = 20;
 export type FiltrosPesquisa = {
-  modo: "livre" | "dia" | "periodo" | "mes";
+  modo: "livre" | "dia" | "periodo" | "mes" | "manual";
   dia?: string;
   inicio?: string;
   fim?: string;
@@ -20,6 +20,7 @@ export type EscopoPesquisa = {
   actorId: string;
   farmId: string | null;
   farmacia?: string;
+  role: RbkRole;
 };
 export type LinhaAutorizacao = {
   id: string;
@@ -57,7 +58,12 @@ function validarData(value: string) {
 export function normalizarPesquisa(f: FiltrosPesquisa): PesquisaAplicada {
   let inicio = "",
     fim = "";
-  if (f.modo === "dia") inicio = fim = validarData(f.dia || "");
+  if (f.modo === "manual") {
+    inicio = f.inicio ? validarData(f.inicio) : "";
+    fim = f.fim ? validarData(f.fim) : "";
+    if (inicio && fim && inicio > fim)
+      throw new Error("A data inicial não pode ser maior que a final.");
+  } else if (f.modo === "dia") inicio = fim = validarData(f.dia || "");
   else if (f.modo === "periodo") {
     inicio = validarData(f.inicio || "");
     fim = validarData(f.fim || "");
@@ -126,16 +132,30 @@ export async function obterEscopoPesquisa(
       throw new Error("Farmácia não encontrada ou sem acesso.");
     farmacia = farm.data.nome_fantasia || farm.data.razao_social || undefined;
   }
-  return { actorId: user.id, farmId, farmacia };
+  return { actorId: user.id, farmId, farmacia, role };
 }
 export async function validarEscopoPesquisa(
   client: SupabaseClient,
   scope: EscopoPesquisa,
 ) {
   const atual = await obterEscopoPesquisa(client, scope.farmId || undefined);
-  if (atual.actorId !== scope.actorId || atual.farmId !== scope.farmId)
+  if (
+    atual.actorId !== scope.actorId ||
+    atual.farmId !== scope.farmId ||
+    atual.role !== scope.role
+  )
     throw new Error(
       "A sessão ou a farmácia mudou. Atualize a página para continuar.",
+    );
+}
+export async function validarGestaoPesquisa(
+  client: SupabaseClient,
+  scope: EscopoPesquisa,
+) {
+  await validarEscopoPesquisa(client, scope);
+  if (scope.role === "operador")
+    throw new Error(
+      "Relatórios e seleção acumulada são exclusivos de gerentes e gestores.",
     );
 }
 function consulta(client: SupabaseClient, scope: EscopoPesquisa) {
@@ -184,6 +204,7 @@ export async function listarPesquisaCompleta(
   snapshot: string,
   progresso?: (s: string) => void,
 ) {
+  await validarGestaoPesquisa(client, scope);
   const result: LinhaAutorizacao[] = [];
   let total: number | undefined;
   for (let pagina = 0; ; pagina++) {
@@ -212,7 +233,7 @@ export async function revalidarSelecao(
   scope: EscopoPesquisa,
   ids: string[],
 ) {
-  await validarEscopoPesquisa(client, scope);
+  await validarGestaoPesquisa(client, scope);
   const unicos = [...new Set(ids)],
     rows: LinhaAutorizacao[] = [];
   for (let offset = 0; offset < unicos.length; offset += 20) {

@@ -5,7 +5,7 @@ import { gerarAutorizacaoPdf, type PdfAssets, type DocumentoPdf } from "./pdf";
 import { renderizarAnexo } from "./renderizarAnexo";
 import {
   revalidarSelecao,
-  validarEscopoPesquisa,
+  validarGestaoPesquisa,
   type EscopoPesquisa,
   type LinhaAutorizacao,
 } from "./pesquisa";
@@ -137,7 +137,7 @@ export async function gerarPartePesquisa(
 ) {
   if (rows.length > 20) throw new DividirParteError();
   if (!rows.length) throw new Error("Nenhuma autorização selecionada.");
-  await validarEscopoPesquisa(client, scope);
+  await validarGestaoPesquisa(client, scope);
   const atuais = await revalidarSelecao(
     client,
     scope,
@@ -169,7 +169,7 @@ export async function gerarPartePesquisa(
     parciais = new Set<string>();
   let totalBytes = 0;
   for (const [index, row] of atuais.entries()) {
-    await validarEscopoPesquisa(client, scope);
+    await validarGestaoPesquisa(client, scope);
     progresso?.(`Preparando autorização ${index + 1} de ${atuais.length}…`);
     // Consulta operacional por farm_id: disponível também no plano Armazenamento.
     const a = await client
@@ -226,7 +226,7 @@ export async function gerarPartePesquisa(
     ))
       documentosPdf.addPage(p);
   }
-  await validarEscopoPesquisa(client, scope);
+  await validarGestaoPesquisa(client, scope);
   const pdf = await PDFDocument.load(
     await gerarListagemPesquisa(atuais, title, semDocumentos, parciais),
   );

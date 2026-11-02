@@ -6,8 +6,16 @@ import {
   revalidarSelecao,
   obterEscopoPesquisa,
 } from "../src/lib/autorizacoes/pesquisa";
-const scope = { actorId: "actor", farmId: "farm" };
-function client(rows: any[] = [], count = rows.length) {
+const scope = {
+  actorId: "actor",
+  farmId: "farm",
+  role: "gerente_farmacia" as const,
+};
+function client(
+  rows: any[] = [],
+  count = rows.length,
+  perfil = "gerente_farmacia",
+) {
   const calls: any[] = [];
   const query: any = {
     then: (resolve: any) =>
@@ -19,7 +27,7 @@ function client(rows: any[] = [], count = rows.length) {
       return query;
     };
   query.maybeSingle = async () => ({
-    data: { id: "farm", perfil: "operador", farm_id: "farm", status: "active" },
+    data: { id: "farm", perfil, farm_id: "farm", status: "active" },
     error: null,
   });
   const c: any = {
@@ -128,4 +136,44 @@ it("exports all pages and refuses missing selected records rather than silently 
   await expect(
     revalidarSelecao(m.c, scope, ["one", "missing"]),
   ).rejects.toThrow();
+});
+
+it("denies attendant report aggregation even when IDs from their own pharmacy are supplied", async () => {
+  const { c } = client([], 0, "operador");
+  const attendant = {
+    actorId: "actor",
+    farmId: "farm",
+    role: "operador" as const,
+  };
+  await expect(
+    listarPesquisaCompleta(
+      c,
+      attendant,
+      { inicio: "2026-11-02", fim: "2026-11-02", cpf: "", numero: "" },
+      new Date().toISOString(),
+    ),
+  ).rejects.toThrow("gerentes");
+  await expect(revalidarSelecao(c, attendant, ["one"])).rejects.toThrow(
+    "gerentes",
+  );
+});
+
+it("keeps open-ended dates available for attendant search but rejects a forged manager scope", async () => {
+  expect(normalizarPesquisa({ modo: "manual", fim: "2026-11-02" })).toEqual({
+    inicio: "",
+    fim: "2026-11-02",
+    cpf: "",
+    numero: "",
+  });
+  const { c, calls } = client([], 0, "operador");
+  await expect(
+    revalidarSelecao(
+      c,
+      { actorId: "actor", farmId: "farm", role: "gerente_farmacia" },
+      ["one"],
+    ),
+  ).rejects.toThrow("mudou");
+  expect(calls.some((x) => x[0] === "from" && x[1] === "autorizacoes")).toBe(
+    false,
+  );
 });

@@ -8,7 +8,7 @@ import {
   revalidarSelecao,
 } from "../src/lib/autorizacoes/pesquisa";
 it.runIf(process.env.RBK_TEST_DEV_PESQUISA === "1")(
-  "checks real demo pagination, multi-search selection and document metadata using the attendant RLS session",
+  "checks real demo pagination and denies management reports using the attendant RLS session",
   async () => {
     process.loadEnvFile(".env.local");
     expect(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname).toBe(
@@ -37,25 +37,21 @@ it.runIf(process.env.RBK_TEST_DEV_PESQUISA === "1")(
       expect(a.linhas.some((r) => b.linhas.some((x) => x.id === r.id))).toBe(
         false,
       );
-      const all = await listarPesquisaCompleta(
-        c,
-        scope,
-        normalizarPesquisa({
-          modo: "periodo",
-          inicio: "2026-10-31",
-          fim: "2026-11-02",
-        }),
-        snapshot,
+      expect(scope.role).toBe("operador");
+      await expect(
+        listarPesquisaCompleta(c, scope, f, snapshot),
+      ).rejects.toThrow("gerentes");
+      const demo = await c
+        .from("autorizacoes")
+        .select("id,data_autorizacao")
+        .eq("farm_id", scope.farmId!)
+        .like("observacao", "RBK-DEMO-PESQUISA-20261102%");
+      expect(demo.error).toBeNull();
+      expect(demo.data).toHaveLength(45);
+      const newer = demo.data![0];
+      await expect(revalidarSelecao(c, scope, [newer.id])).rejects.toThrow(
+        "gerentes",
       );
-      const demo = all.filter((r) =>
-        r.observacao?.startsWith("RBK-DEMO-PESQUISA-20261102"),
-      );
-      expect(demo).toHaveLength(45);
-      const older = demo.find((r) => r.data_autorizacao === "2026-10-31")!,
-        newer = demo.find((r) => r.data_autorizacao === "2026-11-02")!;
-      expect(
-        await revalidarSelecao(c, scope, [newer.id, older.id, newer.id]),
-      ).toHaveLength(2);
       const d = await c
         .from("documentos")
         .select("id")

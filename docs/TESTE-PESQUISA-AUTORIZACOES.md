@@ -2,7 +2,9 @@
 
 Somente desenvolvimento: https://rbk-digital-testes.vercel.app/autorizacoes
 
-Conta fictícia: `rbkdigital@rbkdigital.com.br`, usando a senha de teste já fornecida. Farmácia: **Farmácia Fictícia - Balcão**. Nenhum registro foi criado ou alterado em produção para este teste.
+As novas funções são exclusivas do gestor RBK e dos gerentes/administradores das farmácias. Para aprovar os relatórios, entre com seu acesso RBK de desenvolvimento e abra a [farmácia fictícia](https://rbk-digital-testes.vercel.app/usuarios/6d1553be-4879-4683-8f99-ea1a957087af/autorizacoes).
+
+A conta `rbkdigital@rbkdigital.com.br` permanece como atendente: deve exibir somente a consulta enxuta, sem seleção acumulada ou relatórios. Farmácia: **Farmácia Fictícia - Balcão**. Nenhum registro foi criado ou alterado em produção para este teste.
 
 ## Conjunto fictício criado
 
@@ -30,4 +32,4 @@ A seleção permanece enquanto esta consulta estiver aberta; mudar de farmácia,
 
 O script `tools/seed-autorizacoes-pesquisa-demo.mjs` aceita exclusivamente o projeto `ympeqcycjadvvumanmwm` e a farmácia fictícia esperada. Usa autenticação normal e confirma Storage antes de registrar documentos. É idempotente e não apaga dados.
 
-Fornecer a senha temporariamente em `RBK_DEMO_PASSWORD`; não gravar credenciais no repositório. O teste opcional `RBK_TEST_DEV_PESQUISA=1` valida a paginação real e a seleção com as permissões do atendente. A sessão criada para o teste é encerrada apenas localmente.
+Fornecer a senha temporariamente em `RBK_DEMO_PASSWORD`; não gravar credenciais no repositório. O teste opcional `RBK_TEST_DEV_PESQUISA=1` valida a paginação real e a recusa dos relatórios para o atendente. A sessão criada para o teste é encerrada apenas localmente.

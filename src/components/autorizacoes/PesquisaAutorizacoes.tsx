@@ -38,11 +38,18 @@ const message = (e: unknown) =>
     ? e.message
     : "Não foi possível concluir. Tente novamente.";
 function descricao(f: PesquisaAplicada) {
-  return [
-    f.inicio &&
-      (f.inicio === f.fim
+  const periodo =
+    f.inicio && f.fim
+      ? f.inicio === f.fim
         ? `Dia ${data(f.inicio)}`
-        : `Período: ${data(f.inicio)} a ${data(f.fim)}`),
+        : `Período: ${data(f.inicio)} a ${data(f.fim)}`
+      : f.inicio
+        ? `A partir de ${data(f.inicio)}`
+        : f.fim
+          ? `Até ${data(f.fim)}`
+          : "";
+  return [
+    periodo,
     f.cpf && `CPF ${cpf(f.cpf)}`,
     f.numero && `Autorização ${numero(f.numero)}`,
   ]
@@ -366,6 +373,7 @@ function ConsultaAutorizacoes({
     }
   }
   const count = Object.keys(selected).length;
+  const gestao = Boolean(scope && scope.role !== "operador");
   function pagination() {
     return (
       <nav
@@ -431,25 +439,59 @@ function ConsultaAutorizacoes({
               placeholder="000.000.000.000.000"
             />
           </label>
-          <label className="text-sm">
-            Filtro de data
-            <select
-              aria-label="Filtro de data"
-              className={field}
-              value={draft.modo}
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  modo: e.target.value as FiltrosPesquisa["modo"],
-                })
-              }
-            >
-              <option value="livre">Sem filtro de data</option>
-              <option value="dia">Dia</option>
-              <option value="periodo">Período</option>
-              <option value="mes">Mês</option>
-            </select>
-          </label>
+          {gestao && (
+            <label className="text-sm">
+              Filtro de data
+              <select
+                aria-label="Filtro de data"
+                className={field}
+                value={draft.modo}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    modo: e.target.value as FiltrosPesquisa["modo"],
+                  })
+                }
+              >
+                <option value="livre">Sem filtro de data</option>
+                <option value="dia">Dia</option>
+                <option value="periodo">Período</option>
+                <option value="mes">Mês</option>
+              </select>
+            </label>
+          )}
+          {!gestao && (
+            <>
+              <label className="text-sm">
+                Data inicial
+                <input
+                  aria-label="Data inicial"
+                  className={field}
+                  type="date"
+                  value={draft.inicio || ""}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      modo: "manual",
+                      inicio: e.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label className="text-sm">
+                Data final
+                <input
+                  aria-label="Data final"
+                  className={field}
+                  type="date"
+                  value={draft.fim || ""}
+                  onChange={(e) =>
+                    setDraft({ ...draft, modo: "manual", fim: e.target.value })
+                  }
+                />
+              </label>
+            </>
+          )}
           {draft.modo === "dia" && (
             <label className="text-sm">
               Dia
@@ -513,8 +555,9 @@ function ConsultaAutorizacoes({
           </div>
         </fieldset>
         <p className="mt-3 text-sm text-gray-500">
-          Informe pelo menos um filtro. A seleção é mantida ao pesquisar outros
-          CPFs, autorizações ou datas.
+          Informe pelo menos um filtro.
+          {gestao &&
+            " A seleção é mantida ao pesquisar outros CPFs, autorizações ou datas."}
         </p>
         {applied && (
           <p className="mt-3 rounded-xl bg-gray-50 p-3 text-sm">
@@ -536,59 +579,62 @@ function ConsultaAutorizacoes({
       >
         {status}
       </p>
-      <section className="rbk-card mb-5 p-5" aria-label="Seleção acumulada">
-        <h2 className="font-semibold">{count} autorizações selecionadas</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Você pode reunir autorizações de dias e meses diferentes.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-3">
-          <button
-            type="button"
-            className={button}
-            disabled={busy || !count}
-            onClick={() => void prepareReport("selecao")}
-          >
-            Gerar PDF das selecionadas
-          </button>
-          <button
-            type="button"
-            className={button}
-            disabled={busy || !count}
-            onClick={() => setSelected({})}
-          >
-            Limpar seleção
-          </button>
-        </div>
-        {count > 0 && (
-          <details className="mt-3">
-            <summary className="cursor-pointer text-sm">
-              Conferir seleção
-            </summary>
-            <ul className="mt-2 space-y-2">
-              {Object.values(selected).map((r) => (
-                <li
-                  key={r.id}
-                  className="flex flex-wrap items-center gap-3 text-sm"
-                >
-                  <span>
-                    {numero(r.numero_autorizacao)} · {data(r.data_autorizacao)}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className="text-red-700"
-                    aria-label={`Remover autorização ${numero(r.numero_autorizacao)} da seleção`}
-                    onClick={() => toggle(r)}
+      {gestao && (
+        <section className="rbk-card mb-5 p-5" aria-label="Seleção acumulada">
+          <h2 className="font-semibold">{count} autorizações selecionadas</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Você pode reunir autorizações de dias e meses diferentes.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <button
+              type="button"
+              className={button}
+              disabled={busy || !count}
+              onClick={() => void prepareReport("selecao")}
+            >
+              Gerar PDF das selecionadas
+            </button>
+            <button
+              type="button"
+              className={button}
+              disabled={busy || !count}
+              onClick={() => setSelected({})}
+            >
+              Limpar seleção
+            </button>
+          </div>
+          {count > 0 && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm">
+                Conferir seleção
+              </summary>
+              <ul className="mt-2 space-y-2">
+                {Object.values(selected).map((r) => (
+                  <li
+                    key={r.id}
+                    className="flex flex-wrap items-center gap-3 text-sm"
                   >
-                    Remover
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
-      </section>
-      {report && (
+                    <span>
+                      {numero(r.numero_autorizacao)} ·{" "}
+                      {data(r.data_autorizacao)}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      className="text-red-700"
+                      aria-label={`Remover autorização ${numero(r.numero_autorizacao)} da seleção`}
+                      onClick={() => toggle(r)}
+                    >
+                      Remover
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </section>
+      )}
+      {gestao && report && (
         <section className="rbk-card mb-5 p-5" aria-label="Relatório em PDF">
           <h2 className="text-lg font-semibold">
             Relatório: {report.rows.length} autorizações
@@ -650,29 +696,31 @@ function ConsultaAutorizacoes({
                   `Exibindo ${page * 20 + 1} a ${Math.min(page * 20 + rows.length, total)}.`}
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                className={button}
-                disabled={busy || !rows.length}
-                onClick={() =>
-                  setSelected((previous) => ({
-                    ...previous,
-                    ...Object.fromEntries(rows.map((r) => [r.id, r])),
-                  }))
-                }
-              >
-                Selecionar página
-              </button>
-              <button
-                type="button"
-                className={button}
-                disabled={busy || !total}
-                onClick={() => void prepareReport("pesquisa")}
-              >
-                Gerar PDF da pesquisa
-              </button>
-            </div>
+            {gestao && (
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className={button}
+                  disabled={busy || !rows.length}
+                  onClick={() =>
+                    setSelected((previous) => ({
+                      ...previous,
+                      ...Object.fromEntries(rows.map((r) => [r.id, r])),
+                    }))
+                  }
+                >
+                  Selecionar página
+                </button>
+                <button
+                  type="button"
+                  className={button}
+                  disabled={busy || !total}
+                  onClick={() => void prepareReport("pesquisa")}
+                >
+                  Gerar PDF da pesquisa
+                </button>
+              </div>
+            )}
           </div>
           {pagination()}
           {!rows.length && (
@@ -684,14 +732,16 @@ function ConsultaAutorizacoes({
             {rows.map((r) => (
               <article className="rbk-card p-5" key={r.id}>
                 <label className="flex items-start gap-3">
-                  <input
-                    className="mt-1 h-5 w-5"
-                    type="checkbox"
-                    checked={Boolean(selected[r.id])}
-                    disabled={busy}
-                    onChange={() => toggle(r)}
-                    aria-label={`Selecionar autorização ${numero(r.numero_autorizacao)}`}
-                  />
+                  {gestao && (
+                    <input
+                      className="mt-1 h-5 w-5"
+                      type="checkbox"
+                      checked={Boolean(selected[r.id])}
+                      disabled={busy}
+                      onChange={() => toggle(r)}
+                      aria-label={`Selecionar autorização ${numero(r.numero_autorizacao)}`}
+                    />
+                  )}
                   <span>
                     <span className="block text-xs uppercase text-gray-500">
                       Autorização
@@ -714,7 +764,12 @@ function ConsultaAutorizacoes({
                     <dt className="text-gray-500">Farmácia</dt>
                     <dd>{nomeFarmacia || r.farmacia || "Não informada"}</dd>
                   </div>
-                  {r.observacao && <div className="sm:col-span-2"><dt className="text-gray-500">Observação</dt><dd className="break-words">{r.observacao}</dd></div>}
+                  {r.observacao && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-gray-500">Observação</dt>
+                      <dd className="break-words">{r.observacao}</dd>
+                    </div>
+                  )}
                 </dl>
                 <Link
                   className="mt-5 inline-block text-sm text-red-700 underline"
