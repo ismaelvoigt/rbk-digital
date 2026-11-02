@@ -10,7 +10,7 @@ const authState=vi.hoisted(()=>({perfil:'farmacia',admin:false,profileExists:tru
 vi.mock('../src/lib/supabase/client',()=>({createClient:()=>({
  auth:{getUser:async()=>({data:{user:{id:'user-1'}}})},
  from:(table:string)=>{
-  const builder={select:()=>builder,eq:()=>builder,maybeSingle:async()=>({data:table==='users'?(authState.profileExists?{perfil:authState.perfil,status:'active'}:null):(authState.admin?{user_id:'user-1'}:null),error:null})};
+  const builder={select:()=>builder,eq:()=>builder,maybeSingle:async()=>({data:table==='users'?(authState.profileExists?{perfil:authState.perfil,status:'active',farm_id:'farm'}:null):table==='farms'?{plano:'completo'}:(authState.admin?{user_id:'user-1'}:null),error:null})};
   return builder;
  },
 })}));
@@ -92,4 +92,11 @@ describe('pesquisa no cabeçalho',()=>{
   await act(async()=>{input.focus();});
   expect(host.querySelector('a[href="/usuarios/novo"]')).not.toBeNull();
  });
+});
+it('não exibe nem abre pesquisa para atendente mesmo com Ctrl+K',async()=>{
+ authState.perfil='operador';
+ await act(async()=>root.render(<HeaderSearch/>));
+ expect(host.querySelector('input[type="search"]')).toBeNull();
+ await act(async()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true})));
+ expect(host.querySelector('[aria-label="Resultados da pesquisa"]')).toBeNull();
 });

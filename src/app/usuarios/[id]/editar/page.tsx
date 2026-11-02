@@ -1,5 +1,8 @@
 "use client";
 
+import {AcessoFarmacia} from "../../../../components/AcessoFarmacia";
+import {LocalidadeFields} from "../../../../components/LocalidadeFields";
+import {ReenviarConvite} from "../../../../components/ReenviarConvite";
 import Link from "next/link";
 import { formatTelefone, normalizeTelefone } from "../../../../lib/cadastro/telefone";
 import { useRetornoFarmacias } from "../../../../lib/usuarios/useRetornoFarmacias";
@@ -24,6 +27,7 @@ type Cadastro = {
         cidade: string | null;
         estado: string | null;
         status: string;
+        plano: string;
       }
     | null;
 };
@@ -342,6 +346,8 @@ export default function EditarCadastroFarmaciaPage() {
           </div>
         )}
 
+        {cadastro && <AcessoFarmacia id={cadastro.id} perfil={cadastro.perfil} plano={cadastro.farms?.plano ?? "armazenamento"}/>}
+
         <form
           onSubmit={salvar}
           className="space-y-6"
@@ -466,48 +472,8 @@ export default function EditarCadastroFarmaciaPage() {
                 />
               </div>
 
-              <div className="grid gap-5 md:grid-cols-[1fr_140px]">
-                <div>
-                  <label
-                    htmlFor="cidade"
-                    className="mb-1 block text-sm font-medium text-gray-700"
-                  >
-                    Cidade
-                  </label>
-
-                  <input
-                    id="cidade"
-                    value={cidade}
-                    onChange={(event) =>
-                      setCidade(event.target.value)
-                    }
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[var(--rbk-red)] focus:ring-2 focus:ring-red-600/20"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="estado"
-                    className="mb-1 block text-sm font-medium text-gray-700"
-                  >
-                    Estado
-                  </label>
-
-                  <input
-                    id="estado"
-                    maxLength={2}
-                    value={estado}
-                    onChange={(event) =>
-                      setEstado(
-                        event.target.value
-                          .toUpperCase()
-                          .replace(/[^A-Z]/g, "")
-                      )
-                    }
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 uppercase outline-none focus:border-[var(--rbk-red)] focus:ring-2 focus:ring-red-600/20"
-                    placeholder="UF"
-                  />
-                </div>
+              <div className="space-y-5">
+                <LocalidadeFields estado={estado} cidade={cidade} onEstadoChange={setEstado} onCidadeChange={setCidade} disabled={salvando}/>
               </div>
             </div>
           </section>
@@ -545,6 +511,8 @@ export default function EditarCadastroFarmaciaPage() {
                 Farmácia inativa perde o acesso, mas o histórico de
                 autorizações e documentos permanece preservado.
               </p>
+              {cadastro && <ReenviarConvite key={`${cadastro.id}:${cadastro.email}`} id={cadastro.id} emailSalvo={cadastro.email ?? ""} emailAtual={email} disabled={salvando || !cadastro.email || status !== 'active' || cadastro.status !== 'active'}/>}
+
             </div>
           </section>
 

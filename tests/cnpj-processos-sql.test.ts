@@ -65,6 +65,8 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/credenciamento-portal.sql", "utf8"));
   const migration = readdirSync('supabase/migrations').find(n=>n.endsWith('_cnpj_multiplos_processos.sql'));
   if (migration) await db.exec(readFileSync('supabase/migrations/'+migration,'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261102030000_exclusao_fichas.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261102040000_auditoria_sem_quarentena.sql','utf8'));
   await db.exec(`set role authenticated;set test.uid='${id(1)}'`);
 }, 30000);
 afterAll(async () => {
@@ -127,4 +129,55 @@ it('links an earlier credential when its master pharmacy is subsequently registe
  const linked=(await db.query<{farm_id:string;ficha:any}>('select farm_id,ficha from cre_processes where id=$1',[created.id])).rows[0];
  expect(linked.farm_id).toBe(farm.id);expect(linked.ficha.B21).toBe('Nome histórico');
  await db.exec('set role authenticated');
+});
+
+it('requires audit CNPJ and explicit confirmation at the database boundary',async()=>{
+ await db.exec(`reset role;set role authenticated;set test.uid='${id(1)}'`);
+ const a=await manager('create',{farm_id:id(10),reference:'Exclusão protegida',confirm_duplicate:true},null);
+ for(const payload of [{},{cnpj:'12345678000190'},{cnpj:'98765432000190',confirmed:true}]) await expect(manager('delete_empty',payload,a.id)).rejects.toThrow('CNPJ');
+ expect(await manager('delete_empty',{cnpj:'12.345.678/0001-90',confirmed:true},a.id)).toEqual({removed:true});
+});
+it('removes only the owned credential from the list, revokes portal and preserves files and events',async()=>{
+ await db.exec('reset role');
+ const cmd=async(op:string,actor:string|null,pid:string|null=null,h:string|null=null,payload={})=>(await db.query<{r:any}>('select cre_command($1,$2,$3,$4,$5) r',[op,actor,h,pid,JSON.stringify(payload)])).rows[0].r;
+ const a=await cmd('create',id(1),null,null,{ficha:{B20:'11222333000181',B21:'Excluir sintético'},filial:false,hash:'9'.repeat(64)});
+ await db.exec(`insert into cre_files(id,process_id,kind,filename,mime,size,fingerprint,storage_path,received_at) values('${id(999)}','${a.id}',0,'teste.pdf','application/pdf',10,'${'f'.repeat(64)}','${a.id}/teste.pdf',now());`);
+ await expect(cmd('remove',id(2),a.id,null,{confirmed:true})).rejects.toThrow('Acesso');
+ await expect(cmd('remove',null,null,'9'.repeat(64),{confirmed:true})).rejects.toThrow('Acesso');
+ await expect(cmd('remove',id(1),a.id)).rejects.toThrow('Confirme');
+ expect(await cmd('remove',id(1),a.id,null,{confirmed:true})).toEqual({removed:true});
+ expect((await cmd('list',id(1))).some((p:any)=>p.id===a.id)).toBe(false);
+ for(const op of ['get','renew','save','init','confirm']) await expect(cmd(op,id(1),a.id)).rejects.toThrow('Acesso');
+ await expect(cmd('get',null,null,'9'.repeat(64))).rejects.toThrow('Acesso');
+ const row=(await db.query<any>('select deleted_by,deleted_at,token_hash from cre_processes where id=$1',[a.id])).rows[0];
+ expect(row.deleted_by).toBe(id(1));expect(row.deleted_at).toBeTruthy();expect(row.token_hash).toBeNull();
+ expect((await db.query('select id from cre_files where process_id=$1',[a.id])).rows).toHaveLength(1);
+ expect((await db.query("select action from cre_events where process_id=$1 order by id",[a.id])).rows.map((r:any)=>r.action)).toEqual(['created','removed']);
+ await db.exec(`set role authenticated;set test.uid='${id(1)}'`);
+});
+it('keeps started audit submissions protected even with the correct CNPJ',async()=>{
+ await db.exec(`reset role;set role authenticated;set test.uid='${id(1)}'`);
+ const a=await manager('create',{farm_id:id(10),reference:'Envio protegido',confirm_duplicate:true},null);
+ const h='8'.repeat(64);await manager('link',{hash:h,days:40},a.id);
+ await portal('begin',{key:crypto.randomUUID(),files:[{id:crypto.randomUUID(),name:'teste.pdf',size:30,mime:'application/pdf',fingerprint:'7'.repeat(64)}]},h);
+ await expect(manager('delete_empty',{cnpj:'12345678000190',confirmed:true},a.id)).rejects.toThrow('já iniciou ou concluiu');
+});
+
+it('downloads received audit documents in every scan state but still rejects incomplete or foreign files',async()=>{
+ await db.exec(`reset role;set role authenticated;set test.uid='${id(1)}'`);
+ const a=await manager('create',{farm_id:id(10),reference:'Sem quarentena',confirm_duplicate:true},null);
+ const office=await manager('office_begin',{file:{id:crypto.randomUUID(),name:'oficio.pdf',size:30,mime:'application/pdf',fingerprint:'2'.repeat(64)}},a.id);
+ await expect(manager('download',{file_id:office.id},a.id)).rejects.toThrow('Arquivo');
+ await db.exec('reset role');
+ await db.query('update aud_files set received_at=now() where id=$1',[office.id]);
+ for(const scan of ['pending','error','clean','infected','rejected']){
+  await db.query('update aud_files set scan=$1 where id=$2',[scan,office.id]);
+  await db.exec(`set role authenticated;set test.uid='${id(1)}'`);
+  expect(await manager('download',{file_id:office.id},a.id)).toMatchObject({filename:'oficio.pdf'});
+  await db.exec('reset role');
+ }
+ await db.exec(`set role authenticated;set test.uid='${id(2)}'`);
+ await expect(manager('download',{file_id:office.id},a.id)).rejects.toThrow('Acesso');
+ await db.exec(`set test.uid='${id(1)}'`);
+ await expect(manager('download',{file_id:id(9999)},a.id)).rejects.toThrow('Arquivo');
 });

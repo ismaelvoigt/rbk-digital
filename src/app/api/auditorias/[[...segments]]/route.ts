@@ -102,7 +102,7 @@ async function handle(
           : error.code === "42501"
           ? "Você não tem acesso a esta auditoria."
           : op === "download"
-            ? "Arquivo aguardando verificação de segurança."
+            ? "Arquivo indisponível ou envio ainda não confirmado."
             : "Operação recusada. Confira os dados e suas permissões.",
       );
     if (op === "office_begin")

@@ -81,3 +81,16 @@ test.each([true,false])('duplicate credential confirmation %s preserves the choi
  expect(confirm).toHaveBeenCalledOnce();expect(selected).toBe(accept?'second':'');
  expect(requests.filter(r=>r.op==='create')).toHaveLength(accept?2:1);expect(submitter.disabled).toBe(false);
 });
+
+test.each([true,false])('credential removal confirmation %s addresses only the selected saved ficha',async accept=>{
+ const nodes:any[]=[];const saved={id:'to-remove',ficha:{B21:'Teste exclusão',B20:'11222333000181'}};
+ const api=vi.fn().mockResolvedValueOnce([saved]).mockResolvedValueOnce({removed:true}).mockResolvedValue([]);
+ const confirm=vi.fn(()=>accept);
+ const context={api,window:{confirm},$:()=>node(),rows:{replaceChildren(){nodes.length=0},append:(...items:any[])=>nodes.push(...items)},el:(_tag:string,text:string)=>({textContent:text,style:{}}),topStatus:node(),report:vi.fn(),invite:{classList:{add(){}}},renderRecord:vi.fn(),showTab:vi.fn(),processId:'unrelated'};
+ await runInNewContext(`${line('async function loadList(')}\nloadList()`,context);
+ const remove=nodes.find(n=>n.textContent==='Excluir ficha');expect(remove).toBeTruthy();
+ await remove.onclick();expect(confirm).toHaveBeenCalledOnce();
+ if(accept)expect(api).toHaveBeenCalledWith('remove',{id:saved.id,confirmed:true});
+ else expect(api).toHaveBeenCalledTimes(1);
+ expect(context.processId).toBe('unrelated');
+});

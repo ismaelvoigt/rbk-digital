@@ -7,7 +7,7 @@ export const runtime='nodejs';
 export async function POST(req:Request){try{
  assertStaging();validateOrigin(req);const b=await body(req);let actor:string|null=null;let h:string|null=null;
  if(b.manager===true){const c=await managerClient(req);const {data,error}=await c.auth.getUser();if(error||!data.user)throw new PortalError(401,'Entre novamente.');actor=data.user.id;}else h=tokenHash(b.token||'');
- const op=b.op;const allowed=actor?['list','create','get','save','init','confirm','file','renew','revoke']:['get','save','init','confirm'];
+ const op=b.op;const allowed=actor?['list','create','get','save','init','confirm','file','renew','revoke','remove']:['get','save','init','confirm'];
  if(!allowed.includes(op))throw new PortalError(403,'Operação indisponível.');
  const payload:Record<string,unknown>={};let token='';
  if(op==='create'||op==='save'){
@@ -27,6 +27,7 @@ export async function POST(req:Request){try{
   Object.assign(payload,f);
  }
  if(op==='confirm'||op==='file')payload.id=b.fileId;
+ if(op==='remove'){if(b.confirmed!==true)throw new PortalError(400,'Confirme a exclusão da ficha.');payload.confirmed=true;}
  const admin=createAdminClient();const {data,error}=await admin.rpc('cre_command',{op,actor,h,pid:actor?b.id||null:null,payload});
  if(error)throw new PortalError(409,op==='save'?'Não foi possível salvar. Atualize a ficha e confira os dados.':'Acesso ou operação indisponível. Confira o link e tente novamente.');
  if(data?.confirmation_required)return response(data);

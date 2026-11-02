@@ -4,6 +4,8 @@ import {beforeAll,afterAll,it,expect} from 'vitest';
 const root='10000000-0000-4000-8000-000000000001',mgr='10000000-0000-4000-8000-000000000002',other='10000000-0000-4000-8000-000000000003',pharm='10000000-0000-4000-8000-000000000004';
 const farm='20000000-0000-4000-8000-000000000001',farm2='20000000-0000-4000-8000-000000000002';
 let db:PGlite;
+// Match the business date used by the SQL, including the UTC/São Paulo midnight boundary.
+async function businessDate(){return (await db.query<{today:string}>("select to_char(timezone('America/Sao_Paulo',now()),'YYYY-MM-DD') today")).rows[0].today;}
 async function login(id:string){await db.exec(`reset role;select set_config('app.uid','${id}',false);set role authenticated;`);}
 async function rpc(action:string,data:Record<string,unknown>={}){const r=await db.query<{result:any}>('select public.gestao_rbk($1,$2::jsonb) result',[action,JSON.stringify(data)]);return r.rows[0].result;}
 beforeAll(async()=>{db=new PGlite();await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create schema rbk_private;
@@ -32,7 +34,7 @@ it('isola gestores e bloqueia farmácia, anônimo e acesso direto às tabelas',a
 });
 it('Financeiro: recorrência idempotente, fim do mês, pagamento parcial e saldo sem duplicação',async()=>{
  await login(root);const c=(await rpc('clientes')).items[0];
- const today=new Date().toISOString().slice(0,10),month=today.slice(0,7)+'-01';
+ const today=await businessDate(),month=today.slice(0,7)+'-01';
  const k=await rpc('contrato_salvar',{cliente_id:c.id,servico:'RBK Digital',valor:100,plano:'Essencial',forma_pagamento:'Pix',data_contratacao:'2024-01-01',data_inicio:'2024-01-01',vencimento:'2024-01-31',dia_vencimento:31,status:'ativo'});
  await rpc('sincronizar');let d=await rpc('contrato',{id:k.id});const count=d.cobrancas.length;expect(count).toBeGreaterThan(2);
  expect(d.cobrancas.find((x:any)=>x.competencia==='2024-02-01').vencimento).toBe('2024-02-29');
@@ -65,12 +67,12 @@ it('rejeita desvincular farmácia se CNPJ original mudar e mantém cancelados in
 });
 it('assinaturas futuras fora de MRR e suspensões não geram cobranças retroativas',async()=>{
  await login(root);const c=(await rpc('clientes',{busca:'Farmácia A'})).items[0];
- const today=new Date(),year=today.getUTCFullYear(),month=today.getUTCMonth()+1;
+ const today=await businessDate(),year=Number(today.slice(0,4)),month=Number(today.slice(5,7));
  const future=await rpc('contrato_salvar',{cliente_id:c.id,servico:'RBK Digital',valor:70,plano:'Futuro',forma_pagamento:'Pix',data_contratacao:'2024-01-01',data_inicio:`${year+1}-01-01`,vencimento:`${year+1}-01-15`,dia_vencimento:15,status:'ativo'});
  expect((await rpc('financeiro')).indicadores.mrr).toBe(0);expect((await rpc('contrato',{id:future.id})).cobrancas).toHaveLength(1);
  let k=await rpc('contrato_salvar',{cliente_id:c.id,servico:'RBK Digital',valor:70,plano:'Suspenso',forma_pagamento:'Pix',data_contratacao:'2024-01-01',data_inicio:'2024-01-01',vencimento:'2024-01-15',dia_vencimento:15,status:'suspenso'});
  expect((await rpc('contrato',{id:k.id})).cobrancas).toHaveLength(0);
  k=await rpc('contrato_salvar',{...k,status:'ativo'});const d=await rpc('contrato',{id:k.id});expect(d.cobrancas).toHaveLength(1);expect(d.cobrancas[0].competencia).toBe(`${year}-${String(month).padStart(2,'0')}-01`);
- await rpc('pagamento',{cobranca_id:d.cobrancas[0].id,valor:70,forma_pagamento:'Pix',data_pagamento:new Date().toISOString().slice(0,10),idempotency_key:crypto.randomUUID()});
+ await rpc('pagamento',{cobranca_id:d.cobrancas[0].id,valor:70,forma_pagamento:'Pix',data_pagamento:await businessDate(),idempotency_key:crypto.randomUUID()});
  const listed=(await rpc('financeiro')).items.find((x:any)=>x.id===k.id);expect(listed.proxima_cobranca).not.toBeNull();expect(listed.pagamento_status).toBe('pago');
 });

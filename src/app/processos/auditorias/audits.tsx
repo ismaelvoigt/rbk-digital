@@ -8,6 +8,7 @@ import { managerApi } from "../../../lib/auditoria/client";
 import { bytes, date, type Summary } from "../../../lib/auditoria/domain";
 import "./auditoria.css";
 import type { DeliveryResult } from "../../../lib/convites/types";
+import DownloadLotes from "./download-lotes";
 import ContactMessages from "./contact-messages";
 import OfficeAttachment from "./office-attachment";
 import PortalQr from "./portal-qr";
@@ -38,8 +39,8 @@ const events: Record<string, string> = {
   upload_ticket: "Envio autorizado",
   download: "Download solicitado",
   scan_clean: "Verificação de segurança concluída",
-  scan_infected: "Arquivo bloqueado",
-  scan_error: "Verificação pendente",
+  scan_infected: "Sinalização registrada pelo scanner",
+  scan_error: "Verificação em segundo plano sem conclusão",
 };
 export default function Audits() {
   const params = useSearchParams(),
@@ -68,22 +69,15 @@ export default function Audits() {
   const [searchDraft, setSearchDraft] = useState("");
   const [searchCnpj, setSearchCnpj] = useState("");
   const [removeCandidate, setRemoveCandidate] = useState<Summary | null>(null);
+  const [deleteCnpj, setDeleteCnpj] = useState("");
   const [removedNotice, setRemovedNotice] = useState("");
   const [officeProgress, setOfficeProgress] = useState(0);
-  const [usage, setUsage] = useState<
-    { pharmacy: string; period: string; bytes: number; files: number }[]
-  >([]);
   const load = useCallback(async () => {
     setError("");
     try {
       if (id) setDetail(await managerApi(`/${id}`));
       else {
-        const [list, u] = await Promise.all([
-          managerApi(`?page=${page}&cnpj=${encodeURIComponent(searchCnpj)}`),
-          managerApi("/usage"),
-        ]);
-        setItems(list);
-        setUsage(u);
+        setItems(await managerApi(`?page=${page}&cnpj=${encodeURIComponent(searchCnpj)}`));
       }
     } catch (e) {
       setError((e as Error).message);
@@ -168,11 +162,11 @@ export default function Audits() {
     }
   }
   async function removeEmptyAudit() {
-    if (!removeCandidate || busy) return;
+    if (!removeCandidate || busy || normalizeCnpj(deleteCnpj).length !== 14 || normalizeCnpj(deleteCnpj) !== normalizeCnpj(removeCandidate.audit.cnpj)) return;
     setBusy(true);
     setError("");
     try {
-      await managerApi(`/${removeCandidate.audit.id}/delete_empty`, "POST", {});
+      await managerApi(`/${removeCandidate.audit.id}/delete_empty`, "POST", {cnpj:normalizeCnpj(deleteCnpj),confirmed:true});
       setRemoveCandidate(null);
       setRemovedNotice("Auditoria excluída da carteira. O link de envio foi invalidado.");
       if (items.length === 1 && page > 0) setPage(page - 1);
@@ -298,9 +292,14 @@ export default function Audits() {
               {removeCandidate && (
                 <div className="aud-card aud-delete-warning" role="region" aria-label="Confirmar exclusão">
                   <h3>Excluir auditoria de {removeCandidate.audit.pharmacy}?</h3>
+                  <p>CNPJ: <strong>{formatCnpj(removeCandidate.audit.cnpj)}</strong> · Referência: <strong>{removeCandidate.audit.reference || "Sem referência"}</strong></p>
+                  <p>Identificador da auditoria: {removeCandidate.audit.id}</p>
                   <p>Ela sairá da carteira e seu link será invalidado. O cadastro da farmácia, o ofício e o histórico serão preservados. Só é possível excluir se a farmácia não iniciou nenhum envio.</p>
+                  <label>Digite o CNPJ desta auditoria para confirmar
+                    <input value={deleteCnpj} disabled={busy} autoComplete="off" maxLength={18} placeholder="00.000.000/0000-00" onChange={(e) => setDeleteCnpj(formatCnpj(e.target.value))} />
+                  </label>
                   <div className="aud-actions">
-                    <button className="aud-delete-confirm" disabled={busy} onClick={() => void removeEmptyAudit()}>{busy ? "Excluindo…" : "Confirmar exclusão"}</button>
+                    <button className="aud-delete-confirm" disabled={busy || normalizeCnpj(deleteCnpj).length !== 14 || normalizeCnpj(deleteCnpj) !== normalizeCnpj(removeCandidate.audit.cnpj)} onClick={() => void removeEmptyAudit()}>{busy ? "Excluindo…" : "Confirmar exclusão"}</button>
                     <button disabled={busy} onClick={() => setRemoveCandidate(null)}>Cancelar</button>
                   </div>
                 </div>
@@ -354,7 +353,7 @@ export default function Audits() {
                         </td>
                         <td>
                           {s.can_delete === true ? (
-                            <button disabled={busy} aria-label={`Excluir auditoria de ${s.audit.pharmacy}`} onClick={() => { setRemovedNotice(""); setRemoveCandidate(s); }}>Excluir</button>
+                            <button disabled={busy} aria-label={`Excluir auditoria de ${s.audit.pharmacy}`} onClick={() => { setRemovedNotice(""); setDeleteCnpj(""); setRemoveCandidate(s); }}>Excluir</button>
                           ) : <small>Exclusão bloqueada: envio iniciado</small>}
                         </td>
                       </tr>
@@ -380,37 +379,6 @@ export default function Audits() {
                 </button>
               </div>
             </section>
-            {!!usage.length && (
-              <section className="aud-card">
-                <h2>Armazenamento recebido por farmácia e mês</h2>
-                <small>
-                  Inclui lotes concluídos e ofícios recebidos. Objetos parciais e tráfego
-                  devem ser conferidos também no painel do Storage.
-                </small>
-                <div className="aud-table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Farmácia</th>
-                        <th>Mês</th>
-                        <th>Arquivos</th>
-                        <th>Tamanho</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {usage.map((u, i) => (
-                        <tr key={i}>
-                          <td>{u.pharmacy}</td>
-                          <td>{u.period}</td>
-                          <td>{u.files}</td>
-                          <td>{bytes(u.bytes)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            )}
           </>
         )}
         {detail && (
@@ -535,6 +503,7 @@ export default function Audits() {
               <section className="aud-card">
                 <div className="aud-row">
                   <h2>Autorizações · Documentos recebidos</h2>
+                    <DownloadLotes auditId={detail.audit.id} disabled={!detail.batches.some(b=>b.completed_at && b.files.some(f=>f.received_at))} />
                   <div className="aud-actions"><button disabled={busy} onClick={() => void load()}>Atualizar</button><button className="aud-primary" disabled={busy} onClick={() => void generateReport()}>{busy ? "Aguarde…" : "Gerar relatório"}</button></div>
                 </div>
                 {!detail.batches.length && <p>Aguardando o primeiro envio.</p>}
@@ -542,6 +511,7 @@ export default function Audits() {
                   <article className="aud-batch" key={b.id}>
                     <div className="aud-row">
                       <h3>Lote {b.number}</h3>
+                      <DownloadLotes auditId={detail.audit.id} batchId={b.id} number={b.number} disabled={!b.completed_at || !b.files.some(f=>f.received_at)} />
                       <span
                         className={`aud-badge ${b.completed_at ? "green" : ""}`}
                       >
@@ -560,7 +530,6 @@ export default function Audits() {
                           <tr>
                             <th>Arquivo</th>
                             <th>Tamanho</th>
-                            <th>Segurança</th>
                             <th>Ação</th>
                           </tr>
                         </thead>
@@ -570,26 +539,17 @@ export default function Audits() {
                               <td>{f.filename}</td>
                               <td>{bytes(f.size)}</td>
                               <td>
-                                {f.scan === "clean"
-                                  ? "Verificado"
-                                  : ["infected", "rejected"].includes(
-                                        f.scan || "",
-                                      )
-                                    ? "Bloqueado"
-                                    : "Quarentena"}
-                              </td>
-                              <td>
                                 <button
                                   disabled={
                                     busy ||
-                                    f.scan !== "clean" ||
+                                    !f.received_at ||
                                     !b.completed_at
                                   }
                                   onClick={() =>
                                     void act("download", { file_id: f.id })
                                   }
                                 >
-                                  Download seguro
+                                  Baixar
                                 </button>
                               </td>
                             </tr>
@@ -600,8 +560,7 @@ export default function Audits() {
                   </article>
                 ))}
                 <small>
-                  Recebimento não significa autenticidade. Downloads são
-                  liberados somente após verificação de segurança.
+                  Os arquivos ficam disponíveis após a confirmação do recebimento. O ZIP contém uma pasta por lote concluído. Em downloads grandes ou conexões lentas, prefira baixar um lote por vez.
                 </small>
               </section>
             )}

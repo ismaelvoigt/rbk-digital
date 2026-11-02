@@ -1,4 +1,6 @@
 "use client";
+import {dataISOBrasilia,FUSO_BRASILIA} from "../../lib/datas/brasilia";
+import {nomeInicialFarmacia} from "../../lib/usuarios/nomeInicial";
 
 import { useRouter } from "next/navigation";
 
@@ -6,6 +8,7 @@ import Link from "next/link";
 import ProximasCard from "../../components/proximas/ProximasCard";
 import { useEffect, useState } from "react";
 
+import { listarPaginas } from "../../lib/documentos/paginacao";
 import { createClient } from "../../lib/supabase/client";
 import { RbkBrand } from "../../components/RbkBrand";
 
@@ -51,8 +54,11 @@ export default function FarmaciaPage() {
   const supabase = createClient();
 
   const [perfil, setPerfil] = useState<string | null>(null);
+  const [farmInfo,setFarmInfo]=useState<{nome_fantasia:string|null;razao_social:string|null;plano:string}|null>(null);
+  const mostrarAcompanhamento = farmInfo?.plano === 'completo' && ['farmacia','administrador_farmacia','gerente_farmacia'].includes(perfil ?? '');
   const [email, setEmail] = useState("");
   const [carregando, setCarregando] = useState(true);
+  const [erroIndicadores,setErroIndicadores] = useState("");
   const [autorizacoesHoje, setAutorizacoesHoje] = useState(0);
   const [documentosHoje, setDocumentosHoje] = useState(0);
   const [pendencias, setPendencias] = useState(0);
@@ -61,7 +67,9 @@ export default function FarmaciaPage() {
   const [ultimaCompleta, setUltimaCompleta] = useState(false);
 
   useEffect(() => {
+    let ativo = true;
     async function carregarUsuario() {
+      try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -74,43 +82,36 @@ export default function FarmaciaPage() {
       setEmail(user.email ?? "");
       const {data: profile} = await supabase.from("users").select("perfil,farm_id,status").eq("id",user.id).maybeSingle();
       if (!profile?.farm_id || profile.status !== "active") { window.location.href="/"; return; }
+      const farm = await supabase.from('farms').select('nome_fantasia,razao_social,plano').eq('id',profile.farm_id).maybeSingle();
+      if (!ativo) return;
       setPerfil(profile.perfil);
+      if (!farm.error) setFarmInfo(farm.data);
 
-      const inicioHoje = new Date();
-      inicioHoje.setHours(0, 0, 0, 0);
+      const hojeBrasilia = dataISOBrasilia();
 
-      const { data: autorizacoesData } = await supabase
-        .from("autorizacoes")
-        .select("id, numero_autorizacao, cpf_cliente, created_at")
-        .eq("farm_id", profile.farm_id)
-        .order("created_at", { ascending: false });
-
-      const autorizacoes = (autorizacoesData ?? []) as AutorizacaoResumo[];
-
-      const ids = autorizacoes.map((item) => item.id);
-
-      let documentos: DocumentoResumo[] = [];
-
-      if (ids.length > 0) {
-        const { data: documentosData } = await supabase
-          .from("documentos")
-          .select("autorizacao_id, categoria, created_at")
-          .in("autorizacao_id", ids);
-
-        documentos = (documentosData ?? []) as DocumentoResumo[];
+      const autorizacoes = await listarPaginas<AutorizacaoResumo>((inicio,fim)=>supabase
+        .from('autorizacoes').select('id,numero_autorizacao,cpf_cliente,created_at')
+        .eq('farm_id',profile.farm_id).order('created_at',{ascending:false}).order('id').range(inicio,fim));
+      const ids = autorizacoes.map(item=>item.id);
+      const documentos:DocumentoResumo[] = [];
+      for (let inicio=0;inicio<ids.length;inicio+=100) {
+        const lote = await listarPaginas<DocumentoResumo>((de,ate)=>supabase.from('documentos')
+          .select('id,autorizacao_id,categoria,created_at').in('autorizacao_id',ids.slice(inicio,inicio+100))
+          .eq('status','recebido').order('id').range(de,ate));
+        documentos.push(...lote);
       }
+      if (!ativo) return;
 
-      const hojeTimestamp = inicioHoje.getTime();
 
       setAutorizacoesHoje(
         autorizacoes.filter(
-          (item) => new Date(item.created_at).getTime() >= hojeTimestamp
+          (item) => dataISOBrasilia(new Date(item.created_at)) === hojeBrasilia
         ).length
       );
 
       setDocumentosHoje(
         documentos.filter(
-          (item) => new Date(item.created_at).getTime() >= hojeTimestamp
+          (item) => dataISOBrasilia(new Date(item.created_at)) === hojeBrasilia
         ).length
       );
 
@@ -150,10 +151,13 @@ export default function FarmaciaPage() {
         );
       }
 
-      setCarregando(false);
+      } catch {
+        if (ativo) setErroIndicadores('Não foi possível carregar os indicadores. Você pode continuar pelo cadastro ou pela consulta.');
+      } finally { if (ativo) setCarregando(false); }
     }
 
-    carregarUsuario();
+    void carregarUsuario();
+    return () => { ativo = false; };
   }, [supabase]);
 
   async function sairDaConta() {
@@ -161,15 +165,6 @@ export default function FarmaciaPage() {
     router.push("/");
   }
 
-  if (carregando) {
-    return (
-      <main className="rbk-shell flex min-h-screen items-center justify-center">
-        <div className="text-sm text-gray-500">
-          Carregando painel...
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="rbk-shell min-h-screen">
@@ -207,7 +202,7 @@ export default function FarmaciaPage() {
           </p>
 
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-            RBK Digital
+            {nomeInicialFarmacia(farmInfo)}
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
@@ -216,7 +211,7 @@ export default function FarmaciaPage() {
         </div>
 
         <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <ProximasCard/>
+          {mostrarAcompanhamento && <ProximasCard/>}
           <Link
             href="/nova-autorizacao"
             className="rbk-card rbk-card-hover group p-6"
@@ -262,7 +257,7 @@ export default function FarmaciaPage() {
               Consultar autorizações →
             </span>
           </Link>
-          {perfil !== "operador" && <Link href="/administracao" className="rbk-card rbk-card-hover group hidden p-6 lg:block">
+          {mostrarAcompanhamento && <Link href="/administracao" className="rbk-card rbk-card-hover group hidden p-6 lg:block">
             <div className="mb-5 flex items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19V5m0 14h16M8 15v-4m5 4V7m5 8v-6"/></svg></div>
               <h2 className="text-base font-bold text-gray-900">Administração</h2>
@@ -271,17 +266,19 @@ export default function FarmaciaPage() {
             <span className="mt-5 inline-block text-sm font-bold text-red-600">Abrir Administração →</span>
           </Link>}
           {["farmacia","administrador_farmacia"].includes(perfil ?? "") && <Link href="/equipe" className="rbk-card rbk-card-hover group p-6"><div className="mb-5 flex items-center gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="3"/><path d="M7 21v-2a5 5 0 0 1 10 0v2M18 4.7a2.5 2.5 0 0 1 0 4.6M20 20v-2a4 4 0 0 0-2.5-3.7M6 4.7a2.5 2.5 0 0 0 0 4.6M4 20v-2a4 4 0 0 1 2.5-3.7"/></svg></div><h2 className="text-base font-bold text-gray-900">Equipe</h2></div><p className="text-sm leading-6 text-gray-500">Convide funcionários e gerencie os acessos da sua farmácia.</p><span className="mt-5 inline-block text-sm font-bold text-red-600">Gerenciar equipe →</span></Link>}
-          <Link href="/pendencias" className="rbk-card rbk-card-hover group p-6">
+          {mostrarAcompanhamento && <Link href="/pendencias" className="rbk-card rbk-card-hover group p-6">
             <div className="mb-5 flex items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-xl font-bold text-amber-700">!</div>
               <h2 className="text-base font-bold text-gray-900">Pendências</h2>
             </div>
             <p className="text-sm leading-6 text-gray-500">Confira os documentos que precisam de atenção.</p>
             <span className="mt-5 inline-block text-sm font-bold text-red-600">Conferir pendências →</span>
-          </Link>
+          </Link>}
         </section>
 
-        <section className="mt-8">
+        {carregando && <p role="status" className="mt-8 text-sm text-gray-500">Carregando indicadores...</p>}
+        {erroIndicadores && <p role="alert" className="mt-8 text-sm text-amber-800">{erroIndicadores}</p>}
+        {!carregando && !erroIndicadores && <section className="mt-8">
           <div className="mb-4">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
               Visão rápida
@@ -318,6 +315,7 @@ export default function FarmaciaPage() {
 
                     <p className="mt-1 text-sm text-gray-500">
                       {new Intl.DateTimeFormat("pt-BR", {
+                        timeZone: FUSO_BRASILIA,
                         dateStyle: "short",
                         timeStyle: "short",
                       }).format(new Date(ultimaAutorizacao.created_at))}
@@ -353,7 +351,7 @@ export default function FarmaciaPage() {
               </Link>
             )}
           </div>
-        </section>
+        </section>}
       </div>
     </main>
   );
