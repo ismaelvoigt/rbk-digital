@@ -37,9 +37,11 @@ export function ordenarDocumentos(documentos: DocumentoPdf[]) {
   });
 }
 
-export function nomeArquivoPdf(numero: string) {
+export function nomeArquivoPdf(numero: string, data?: string | null) {
   const digits = numero.replace(/\D/g, '').slice(0, 15);
-  return digits ? `autorizacao-${digits}.pdf` : 'autorizacao.pdf';
+  const date = data?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const suffix = date ? `-${date[3]}-${date[2]}-${date[1]}` : '';
+  return `autorizacao${digits ? `-${digits}` : ''}${suffix}.pdf`;
 }
 
 /** Cópia visual dos anexos. Originais, URLs de acesso e assinaturas digitais não são alterados ou transferidos. */
