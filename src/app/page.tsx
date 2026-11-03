@@ -13,6 +13,7 @@ export default function Home() {
   const [email, setEmail] = useState("");
 
   const [senha, setSenha] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
   async function entrar(event: FormEvent<HTMLFormElement>) {
@@ -182,16 +183,39 @@ return (
                 Senha
               </label>
 
+              <div className="relative">
               <input
                 id="senha"
-                type="password"
+                type={mostrarSenha ? "text" : "password"}
                 autoComplete="current-password"
                 value={senha}
                 onChange={(event) => setSenha(event.target.value)}
                 placeholder="Digite sua senha"
                 required
-                className="rbk-input w-full rounded-2xl border border-slate-300 bg-white px-5 py-5 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:ring-4 focus:ring-red-500/10"
+                className="rbk-input w-full rounded-2xl border border-slate-300 bg-white py-5 pl-5 pr-16 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:ring-4 focus:ring-red-500/10"
               />
+              <button
+                type="button"
+                onClick={() => setMostrarSenha((atual) => !atual)}
+                aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                aria-controls="senha"
+                title={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  {mostrarSenha ? (
+                    <>
+                      <path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A11 11 0 0 1 12 5c7 0 10 7 10 7a17 17 0 0 1-3.1 4.3M6.6 6.6A17 17 0 0 0 2 12s3 7 10 7a11 11 0 0 0 5.4-1.4" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </>
+                  )}
+                </svg>
+              </button>
+              </div>
             </div>
 
             {erro && (
