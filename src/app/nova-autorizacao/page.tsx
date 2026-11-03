@@ -254,14 +254,7 @@ export default function NovaAutorizacao() {
   if (autorizacaoSalva) {
     return (
       <main className="rbk-shell min-h-screen">
-        <RbkHeader perfil={perfil}>
-          <Link
-              href="/farmacia"
-              className="text-sm font-bold text-gray-500 hover:text-red-600"
-            >
-              Início
-            </Link>
-        </RbkHeader>
+        <RbkHeader perfil={perfil} />
 
         <div className="rbk-container py-10 sm:py-14">
           <section className="mx-auto max-w-2xl">
@@ -374,18 +367,17 @@ export default function NovaAutorizacao() {
 
   return (
     <main className="rbk-shell min-h-screen">
-      <RbkHeader perfil={perfil}>
-        <Link
-          href="/farmacia"
-          onClick={(event) => { if (temPendentes && !window.confirm('Há arquivos pendentes nesta tela. Sair perde a seleção desses arquivos. Deseja sair?')) event.preventDefault(); }}
-          className="text-sm font-bold text-gray-500 hover:text-red-600"
-        >
-          Início
-        </Link>
-      </RbkHeader>
+      <RbkHeader perfil={perfil} />
 
       <div className="rbk-container max-w-3xl py-8 sm:py-10">
         <div className="mb-7">
+          <Link
+            href="/farmacia"
+            onClick={(event) => { if (temPendentes && !window.confirm('Há arquivos pendentes nesta tela. Sair perde a seleção desses arquivos. Deseja sair?')) event.preventDefault(); }}
+            className="mb-4 inline-block text-sm font-bold text-red-700"
+          >
+            ← Voltar a Farmácia
+          </Link>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-red-600">
             Novo registro
           </p>

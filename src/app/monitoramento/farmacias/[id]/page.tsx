@@ -53,11 +53,9 @@ export default function FarmMonitoringPage() {
 
   return (
     <main className="rbk-shell min-h-screen">
-      <RbkHeader>
-        <Link href="/monitoramento" className="text-sm font-bold text-gray-600">← Monitoramento</Link>
-      </RbkHeader>
+      <RbkHeader />
       <div className="rbk-container py-8 sm:py-10">
-        <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">← Voltar ao Dashboard</Link>
+        <Link href="/monitoramento" className="mb-4 inline-block text-sm font-bold text-red-700">← Voltar ao Monitoramento</Link>
         {loading && <p className="text-sm text-gray-600">Carregando farmácia...</p>}
         {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
         {farm && !error && <>

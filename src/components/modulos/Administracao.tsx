@@ -16,7 +16,7 @@ const modulos = [
 type Modulo = typeof modulos[number]['id'];
 
 export default function Administracao({moduloInicial}: {moduloInicial?: string}) {
-  return <EscopoModulo titulo="Administração">{(farmId, onBusy) =>
+  return <EscopoModulo titulo="Administração" voltarFarmacia>{(farmId, onBusy) =>
     <Conteudo key={farmId} farmId={farmId} onBusy={onBusy} moduloInicial={moduloInicial}/>
   }</EscopoModulo>;
 }

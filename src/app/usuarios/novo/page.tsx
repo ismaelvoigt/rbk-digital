@@ -101,8 +101,8 @@ export default function NovaFarmaciaPage() {
 
       <div className="rbk-container py-8 sm:py-10">
         <div className="mb-8">
-          <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">
-            ← Voltar ao Dashboard
+          <Link href="/usuarios" className="mb-4 inline-block text-sm font-bold text-red-700">
+            ← Voltar para Usuários
           </Link>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-red-600">
             Administração

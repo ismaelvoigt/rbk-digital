@@ -4,7 +4,7 @@ import {useEffect,useState,type ReactNode} from 'react';
 import {RbkHeader} from '../RbkHeader';
 import {createClient} from '../../lib/supabase/client';
 import {contextoModulo,pesquisarFarmacias,nomeFarmacia,cnpjFormatado,type FarmaciaModulo} from '../../lib/modulos/escopo';
-export default function EscopoModulo({titulo,children}:{titulo:string;children:(farmId:string,onBusy:(value:boolean)=>void)=>ReactNode}){
+export default function EscopoModulo({titulo,children,voltarFarmacia=false}:{titulo:string;children:(farmId:string,onBusy:(value:boolean)=>void)=>ReactNode;voltarFarmacia?:boolean}){
  const [contexto,setContexto]=useState<{gestor:boolean;farmacia:FarmaciaModulo|null}|null>(null);
  const [selecionada,setSelecionada]=useState<FarmaciaModulo|null>(null),[busca,setBusca]=useState(''),[opcoes,setOpcoes]=useState<FarmaciaModulo[]>([]),[erro,setErro]=useState(''),[buscando,setBuscando]=useState(false),[busy,setBusy]=useState(false),[desktop,setDesktop]=useState<boolean|null>(null);
  useEffect(()=>{const m=window.matchMedia('(min-width: 1024px)');const update=()=>setDesktop(m.matches);update();m.addEventListener('change',update);return()=>m.removeEventListener('change',update);},[]);
@@ -12,7 +12,7 @@ export default function EscopoModulo({titulo,children}:{titulo:string;children:(
  useEffect(()=>{if(!contexto?.gestor)return;let active=true;const timer=setTimeout(()=>{setBuscando(true);setErro('');void pesquisarFarmacias(createClient(),busca).then(rows=>{if(active)setOpcoes(rows);}).catch(e=>{if(active){setOpcoes([]);setErro(e.message);}}).finally(()=>{if(active)setBuscando(false);});},250);return()=>{active=false;clearTimeout(timer);};},[busca,contexto]);
  const mobile=contexto&&!contexto.gestor&&desktop===false;
  return <main className="rbk-shell min-h-screen"><RbkHeader />
- <div className="rbk-container pt-6"><Link href={contexto?.gestor?'/dashboard':'/farmacia'} className="mb-4 inline-block text-sm font-bold text-red-700">← Voltar ao Dashboard</Link>
+ <div className="rbk-container pt-6"><Link href={voltarFarmacia?'/farmacia':contexto?.gestor?'/dashboard':'/farmacia'} className="mb-4 inline-block text-sm font-bold text-red-700">{voltarFarmacia?'← Voltar a Farmácia':'← Voltar ao Dashboard'}</Link>
  {erro&&<p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-red-800">{erro}</p>}
  {!contexto&&!erro&&<p role="status">Verificando acesso…</p>}
  {mobile?<section className="rbk-card p-6"><h1 className="text-xl font-bold">{titulo}</h1><p className="mt-3">Este módulo está disponível na versão desktop. Acesse pelo computador para consultar os dados da sua farmácia.</p></section>:contexto&&desktop!==null&&<>

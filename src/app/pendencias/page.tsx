@@ -63,10 +63,9 @@ export default function PendenciasPage() {
 
   return (
     <main className="rbk-shell min-h-screen">
-      <RbkHeader>
-        <Link href="/farmacia" className="text-sm font-bold text-gray-600">← Voltar ao início</Link>
-      </RbkHeader>
+      <RbkHeader />
       <div className="rbk-container py-8 sm:py-10">
+        <Link href="/farmacia" className="mb-4 inline-block text-sm font-bold text-red-700">← Voltar a Farmácia</Link>
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-red-600">Rotina da farmácia</p>
         <h1 className="mt-2 text-3xl font-bold text-gray-900">Pendências</h1>
         <p className="mt-2 text-sm text-gray-600">
