@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "../../../../../lib/supabase/client";
-import { RbkBrand } from "../../../../../components/RbkBrand";
+import { RbkHeader } from "../../../../../components/RbkHeader";
 
 function formatarNumeroAutorizacao(valor: string) {
   const digits = valor.replace(/\D/g, "").slice(0, 15);
@@ -69,12 +69,9 @@ export default function DocumentoSucesso() {
 
   return (
     <main className="rbk-shell min-h-screen">
-      <header className="rbk-header">
-        <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <RbkBrand compact light />
-          <Link href={`/autorizacoes/${id}/documentos`} className="text-sm font-bold text-gray-500 hover:text-red-600">← Voltar</Link>
-        </div>
-      </header>
+      <RbkHeader>
+        <Link href={`/autorizacoes/${id}/documentos`} className="text-sm font-bold text-gray-500 hover:text-red-600">← Voltar</Link>
+      </RbkHeader>
 
       <div className="rbk-container max-w-3xl py-10 sm:py-14">
         <div className="text-center">

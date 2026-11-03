@@ -7,7 +7,7 @@ import { dispararExtracao } from "../../../../lib/cupons/client";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/client";
-import { RbkBrand } from "../../../../components/RbkBrand";
+import { RbkHeader } from "../../../../components/RbkHeader";
 import BaixarAutorizacaoPdf from "../../../../components/documentos/BaixarAutorizacaoPdf";
 import { carregarDocumentosAutorizacao } from "../../../../lib/documentos/carregamento";
 import { substituirDocumentoConfirmado, type EnvioDocumento } from "../../../../lib/documentos/envio";
@@ -172,17 +172,14 @@ export default function DocumentosAutorizacao() {
 
   return (
     <main className="rbk-shell min-h-screen">
-      <header className="rbk-header">
-        <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <RbkBrand compact light perfil={perfil} />
-          {navegacao && (<Link
-            href={navegacao.href}
-            className="text-sm font-bold text-gray-500 hover:text-red-600"
-          >
-            {navegacao.href === "/dashboard" ? navegacao.label : "Início"}
-          </Link>)}
-        </div>
-      </header>
+      <RbkHeader perfil={perfil}>
+        {navegacao && (<Link
+          href={navegacao.href}
+          className="text-sm font-bold text-gray-500 hover:text-red-600"
+        >
+          {navegacao.href === "/dashboard" ? navegacao.label : "Início"}
+        </Link>)}
+      </RbkHeader>
 
       <div className="rbk-container max-w-4xl py-8 sm:py-10">
         <div className="mb-7">

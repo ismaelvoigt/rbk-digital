@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { RbkBrand } from "../../../components/RbkBrand";
+import { RbkHeader } from "../../../components/RbkHeader";
 import { formatCnpj, normalizeCnpj } from "../../../lib/auditoria/cnpj";
 import { useSearchParams, useRouter } from "next/navigation";
 import { managerApi } from "../../../lib/auditoria/client";
@@ -179,17 +179,7 @@ export default function Audits() {
   }
   return (
     <main className="aud-shell">
-      <header className="aud-top rbk-topbar">
-        <div className="flex min-h-[76px] items-center justify-between gap-4">
-          <div>
-            <div className="aud-brand">
-              <RbkBrand compact light />
-            </div>
-            <span className="aud-secure">Gestor RBK · Processos</span>
-          </div>
-
-        </div>
-      </header>
+      <RbkHeader />
       <div className="aud-content">
         <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">
           ← Voltar ao Dashboard

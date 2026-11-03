@@ -29,6 +29,7 @@ export function GestorLogout() {
     <div className="rbk-gestor-logout">
       <button
         type="button"
+        aria-label="Sair"
         disabled={busy}
         onClick={() => void logout()}
       >

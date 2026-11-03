@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { RbkBrand } from "../../components/RbkBrand";
+import { RbkHeader } from "../../components/RbkHeader";
 import { createClient } from "../../lib/supabase/client";
 
 type Farm = {
@@ -37,11 +37,7 @@ export default function MonitoramentoPage() {
 
   return (
     <main className="rbk-shell min-h-screen">
-      <header className="rbk-header">
-        <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
-          <RbkBrand compact light />
-        </div>
-      </header>
+      <RbkHeader />
       <div className="rbk-container py-8 sm:py-10">
         <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">← Voltar ao Dashboard</Link>
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-red-600">RBK Digital</p>

@@ -8,7 +8,7 @@ import { dispararExtracao } from "../../lib/cupons/client";
 import DocumentUploadCard from "../../components/documentos/DocumentUploadCard";
 import { createClient } from "../../lib/supabase/client";
 import { usePerfilAtual } from "../../lib/auth/usePerfilAtual";
-import { RbkBrand } from "../../components/RbkBrand";
+import { RbkHeader } from "../../components/RbkHeader";
 import { enviarLote, type EnvioDocumento, type EstadoEnvio } from "../../lib/documentos/envio";
 import { mensagemErroAutorizacao } from "../../lib/documentos/mensagemErroAutorizacao";
 const QrCodeScanner = dynamic(() => import('../../components/qrcode/QrCodeScanner'), {
@@ -254,18 +254,14 @@ export default function NovaAutorizacao() {
   if (autorizacaoSalva) {
     return (
       <main className="rbk-shell min-h-screen">
-        <header className="rbk-header">
-          <div className="rbk-container flex min-h-[76px] items-center justify-between">
-            <RbkBrand compact light perfil={perfil} />
-
-            <Link
+        <RbkHeader perfil={perfil}>
+          <Link
               href="/farmacia"
               className="text-sm font-bold text-gray-500 hover:text-red-600"
             >
               Início
             </Link>
-          </div>
-        </header>
+        </RbkHeader>
 
         <div className="rbk-container py-10 sm:py-14">
           <section className="mx-auto max-w-2xl">
@@ -378,18 +374,15 @@ export default function NovaAutorizacao() {
 
   return (
     <main className="rbk-shell min-h-screen">
-      <header className="rbk-header">
-        <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <RbkBrand compact light perfil={perfil} />
-          <Link
-            href="/farmacia"
-            onClick={(event) => { if (temPendentes && !window.confirm('Há arquivos pendentes nesta tela. Sair perde a seleção desses arquivos. Deseja sair?')) event.preventDefault(); }}
-            className="text-sm font-bold text-gray-500 hover:text-red-600"
-          >
-            Início
-          </Link>
-        </div>
-      </header>
+      <RbkHeader perfil={perfil}>
+        <Link
+          href="/farmacia"
+          onClick={(event) => { if (temPendentes && !window.confirm('Há arquivos pendentes nesta tela. Sair perde a seleção desses arquivos. Deseja sair?')) event.preventDefault(); }}
+          className="text-sm font-bold text-gray-500 hover:text-red-600"
+        >
+          Início
+        </Link>
+      </RbkHeader>
 
       <div className="rbk-container max-w-3xl py-8 sm:py-10">
         <div className="mb-7">

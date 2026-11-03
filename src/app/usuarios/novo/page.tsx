@@ -6,7 +6,7 @@ import { formatTelefone } from "../../../lib/cadastro/telefone";
 import { formatCnpj, normalizeCnpj } from "../../../lib/auditoria/cnpj";
 import { FormEvent, useState } from "react";
 import { createClient } from "../../../lib/supabase/client";
-import { RbkBrand } from "../../../components/RbkBrand";
+import { RbkHeader } from "../../../components/RbkHeader";
 
 
 export default function NovaFarmaciaPage() {
@@ -97,11 +97,7 @@ export default function NovaFarmaciaPage() {
 
   return (
     <main className="rbk-shell min-h-screen">
-      <header className="rbk-header">
-        <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
-          <RbkBrand compact light />
-        </div>
-      </header>
+      <RbkHeader />
 
       <div className="rbk-container py-8 sm:py-10">
         <div className="mb-8">

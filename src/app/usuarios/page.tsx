@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { filtroFarmacias, queryFarmacias } from "../../lib/usuarios/navegacao";
 import { createClient } from "../../lib/supabase/client";
 import { ExcluirFarmacia } from "../../components/ExcluirFarmacia";
-import { RbkBrand } from "../../components/RbkBrand";
+import { RbkHeader } from "../../components/RbkHeader";
 
 type Usuario = {
   id: string;
@@ -255,20 +255,7 @@ export default function UsuariosPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <header className="rbk-topbar">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-5">
-          <RbkBrand light />
-
-          <nav aria-label="Navegação de farmácias" className="flex flex-wrap items-center justify-end gap-3">
-          <Link
-            href="/usuarios/novo"
-            className="rounded-xl rbk-primary px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
-          >
-            + Nova farmácia
-          </Link>
-          </nav>
-        </div>
-      </header>
+      <RbkHeader />
 
       <div className="mx-auto max-w-7xl px-6 py-10">
         <div className="mb-8">
@@ -298,10 +285,18 @@ export default function UsuariosPage() {
             <span>Farmácias cadastradas</span>
           </h1>
 
-          <p className="mt-2 max-w-2xl text-gray-500">
-            Consulte uma farmácia pelo CNPJ ou visualize todas as
-            farmácias cadastradas no RBK Digital.
-          </p>
+          <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-2xl text-gray-500">
+              Consulte uma farmácia pelo CNPJ ou visualize todas as
+              farmácias cadastradas no RBK Digital.
+            </p>
+            <Link
+              href="/usuarios/novo"
+              className="shrink-0 self-start rounded-xl rbk-primary px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 sm:self-auto"
+            >
+              + Nova farmácia
+            </Link>
+          </div>
         </div>
 
         <section className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
