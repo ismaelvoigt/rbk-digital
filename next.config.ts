@@ -1,4 +1,5 @@
 import { assertDevelopmentIsolation } from "./src/lib/config/ambiente";
+import { withWorkflow } from "workflow/next";
 import type { NextConfig } from "next";
 
 assertDevelopmentIsolation();
@@ -32,4 +33,4 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.15.73"],
 };
 
-export default nextConfig;
+export default withWorkflow(nextConfig);

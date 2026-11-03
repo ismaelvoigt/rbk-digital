@@ -21,7 +21,7 @@ export function selectZipFiles(detail: ZipDetail, auditId: string, batchId?: str
     if (!batch.completed_at) continue;
     if (!Number.isSafeInteger(batch.number) || batch.number < 1) throw new Error('Invalid batch number');
     const folder = `Lote ${String(batch.number).padStart(3, '0')}`;
-    for (const file of batch.files) {
+    for (const file of [...batch.files].sort((a,b)=>a.id.localeCompare(b.id))) {
       if (!file.received_at) continue;
       if (file.source !== 'pharmacy' || file.audit_id !== auditId || file.batch_id !== batch.id || !file.storage_path.startsWith(`${auditId}/${batch.id}/`) || !Number.isSafeInteger(file.size) || file.size < 1) throw new Error('Invalid audit file');
       const base = safeName(file.filename);
