@@ -27,7 +27,18 @@ export default function Home() {
     });
 
     if (error || !data.user) {
-      setErro(error?.message ?? "Não foi possível autenticar.");
+      const mensagens: Record<string, string> = {
+        invalid_credentials: "E-mail ou senha incorretos. Verifique os dados e tente novamente.",
+        email_not_confirmed: "Confirme seu e-mail antes de entrar.",
+        user_banned: "Seu acesso está bloqueado. Entre em contato com a RBK Assessoria.",
+        over_request_rate_limit: "Muitas tentativas de login. Aguarde alguns minutos e tente novamente.",
+      };
+      setErro(
+        (error?.code && mensagens[error.code]) ||
+          (error?.status === 429
+            ? "Muitas tentativas de login. Aguarde alguns minutos e tente novamente."
+            : "Não foi possível entrar. Verifique sua conexão e tente novamente."),
+      );
       setCarregando(false);
       return;
     }
