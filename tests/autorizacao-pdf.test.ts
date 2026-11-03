@@ -66,5 +66,6 @@ describe('PDF reunindo documentos da autorização', () => {
   it('usa nome de download seguro sem CPF', () => {
     expect(nomeArquivoPdf('123.456.789.012.345')).toBe('autorizacao-123456789012345.pdf');
     expect(nomeArquivoPdf('../../')).toBe('autorizacao.pdf');
+    expect(nomeArquivoPdf('123456789012345', '2026-10-31')).toBe('autorizacao-123456789012345-31-10-2026.pdf');
   });
 });

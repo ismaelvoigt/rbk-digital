@@ -37,7 +37,7 @@ export default function BaixarAutorizacaoPdf({ id, disabled = false }: { id: str
       const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
-      link.download = nomeArquivoPdf(autorizacao.numero_autorizacao);
+      link.download = nomeArquivoPdf(autorizacao.numero_autorizacao, autorizacao.data_autorizacao);
       document.body.appendChild(link);
       link.click();
       link.remove();

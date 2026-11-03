@@ -39,8 +39,8 @@ export async function GET(request:NextRequest){
   // Detect a missing first object before sending attachment headers.
   const first=await open(files[0],request.signal);
   const stream=zipStream(files,(file,signal)=>file===files[0]?Promise.resolve(first):open(file,signal),request.signal);
-  const cnpj=String(data.audit.cnpj||'').replace(/[^A-Za-z0-9]/g,'')||aid;
+  const pharmacy=String(data.audit.pharmacy||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,140)||`farmacia-${aid}`;
   const suffix=batch?`lote-${data.batches.find((b:{id:string})=>b.id===batch).number}`:'todos-lotes';
-  return withCookies(new Response(stream,{headers:{...headers,'Content-Type':'application/zip','Content-Disposition':`attachment; filename="auditoria-${cnpj}-${suffix}.zip"`,'X-Accel-Buffering':'no'}}));
+  return withCookies(new Response(stream,{headers:{...headers,'Content-Type':'application/zip','Content-Disposition':`attachment; filename="${pharmacy}-${suffix}.zip"`,'X-Accel-Buffering':'no'}}));
  }catch(error){return withCookies(failure(error));}
 }
