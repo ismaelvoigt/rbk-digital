@@ -9,7 +9,7 @@ import { useRetornoFarmacias } from "../../../../lib/usuarios/useRetornoFarmacia
 import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/client";
-import { RbkBrand } from "../../../../components/RbkBrand";
+import { RbkHeader } from "../../../../components/RbkHeader";
 
 type Cadastro = {
   id: string;
@@ -247,11 +247,7 @@ export default function EditarCadastroFarmaciaPage() {
   if (carregando) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <header className="rbk-topbar">
-          <div className="mx-auto flex max-w-6xl items-center px-6 py-5">
-            <RbkBrand light />
-          </div>
-        </header>
+        <RbkHeader />
 
         <div className="mx-auto max-w-4xl px-6 py-12">
           <p className="text-sm text-gray-500">
@@ -265,11 +261,7 @@ export default function EditarCadastroFarmaciaPage() {
   if (!cadastro) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <header className="rbk-topbar">
-          <div className="mx-auto flex max-w-6xl items-center px-6 py-5">
-            <RbkBrand light />
-          </div>
-        </header>
+        <RbkHeader />
 
         <div className="mx-auto max-w-4xl px-6 py-12">
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
@@ -286,20 +278,16 @@ export default function EditarCadastroFarmaciaPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <header className="rbk-topbar">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
-          <RbkBrand light />
-
-          <nav aria-label="Navegação de farmácias" className="flex flex-wrap items-center justify-end gap-3">
-          <Link
-            href={retorno}
-            className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-          >
-            ← Voltar para farmácias
-          </Link>
-          </nav>
-        </div>
-      </header>
+      <RbkHeader>
+        <nav aria-label="Navegação de farmácias" className="flex flex-wrap items-center justify-end gap-3">
+        <Link
+          href={retorno}
+          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+        >
+          ← Voltar para farmácias
+        </Link>
+        </nav>
+      </RbkHeader>
 
       <div className="mx-auto max-w-4xl px-6 py-10">
         <div className="mb-8">

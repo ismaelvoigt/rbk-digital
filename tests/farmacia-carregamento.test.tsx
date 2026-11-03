@@ -12,11 +12,12 @@ vi.mock('../src/components/RbkBrand',()=>({RbkBrand:()=>null}));
 Object.assign(globalThis,{React,IS_REACT_ACT_ENVIRONMENT:true});
 it('permite abrir cadastro e consulta enquanto indicadores aguardam a rede',async()=>{
  const host=document.createElement('div');const root=createRoot(host);
+ const replace=vi.spyOn(window.location,'replace').mockImplementation(()=>{});
  try{await act(async()=>root.render(<FarmaciaPage/>));
  expect(host.querySelector('a[href="/nova-autorizacao"]')).not.toBeNull();
  expect(host.querySelector('a[href="/autorizacoes"]')).not.toBeNull();
  expect(host.textContent).toContain('Carregando indicadores');
  await act(async()=>host.querySelector<HTMLButtonElement>('button[aria-label="Sair"]')!.click());
- expect(m.signOut).toHaveBeenCalledOnce();expect(m.push).toHaveBeenCalledWith('/');
- }finally{await act(async()=>root.unmount())}
+ expect(m.signOut).toHaveBeenCalledOnce();expect(replace).toHaveBeenCalledWith('/');
+ }finally{await act(async()=>root.unmount());replace.mockRestore()}
 });

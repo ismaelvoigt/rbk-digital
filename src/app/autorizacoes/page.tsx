@@ -1,22 +1,19 @@
 "use client";
 import Link from "next/link";
-import { RbkBrand } from "../../components/RbkBrand";
+import { RbkHeader } from "../../components/RbkHeader";
 import { useNavegacaoPerfil } from "../../lib/auth/useNavegacaoPerfil";
 import PesquisaAutorizacoes from "../../components/autorizacoes/PesquisaAutorizacoes";
 export default function Autorizacoes() {
   const navegacao = useNavegacaoPerfil();
   return (
     <main className="rbk-shell min-h-screen">
-      <header className="rbk-header">
-        <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
-          <RbkBrand compact light />
-          {navegacao && (
-            <Link href={navegacao.href} className="text-sm text-gray-600">
-              Início
-            </Link>
-          )}
-        </div>
-      </header>
+      <RbkHeader>
+        {navegacao && (
+          <Link href={navegacao.href} className="text-sm text-gray-600">
+            Início
+          </Link>
+        )}
+      </RbkHeader>
       <div className="rbk-container py-8">
         {navegacao?.href === "/dashboard" && (
           <Link

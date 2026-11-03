@@ -2,15 +2,13 @@
 import {dataISOBrasilia,FUSO_BRASILIA} from "../../lib/datas/brasilia";
 import {nomeInicialFarmacia} from "../../lib/usuarios/nomeInicial";
 
-import { useRouter } from "next/navigation";
-
 import Link from "next/link";
 import ProximasCard from "../../components/proximas/ProximasCard";
 import { useEffect, useState } from "react";
 
 import { listarPaginas } from "../../lib/documentos/paginacao";
 import { createClient } from "../../lib/supabase/client";
-import { RbkBrand } from "../../components/RbkBrand";
+import { RbkHeader } from "../../components/RbkHeader";
 
 type AutorizacaoResumo = {
   id: string;
@@ -50,7 +48,6 @@ function formatarCpf(cpf: string) {
 }
 
 export default function FarmaciaPage() {
-  const router = useRouter();
   const supabase = createClient();
 
   const [perfil, setPerfil] = useState<string | null>(null);
@@ -160,40 +157,9 @@ export default function FarmaciaPage() {
     return () => { ativo = false; };
   }, [supabase]);
 
-  async function sairDaConta() {
-    await supabase.auth.signOut();
-    router.push("/");
-  }
-
-
   return (
     <main className="rbk-shell min-h-screen">
-      <header className="rbk-header">
-        <div className="rbk-container flex min-h-[76px] items-center justify-between gap-5">
-          <RbkBrand compact light />
-
-          <div className="flex items-center gap-4">
-            <div className="hidden text-right sm:block">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
-                Farmácia
-              </p>
-
-              <p className="mt-1 max-w-[280px] truncate text-sm font-medium text-gray-700">
-                {email}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={sairDaConta}
-              aria-label="Sair"
-              className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-            >
-              Sair
-            </button>
-          </div>
-        </div>
-      </header>
+      <RbkHeader email={email} />
 
       <div className="rbk-container py-8 sm:py-10">
         <div className="mb-8">

@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { GestorLogout } from "../../components/GestorNavigation";
-import { RbkBrand } from "../../components/RbkBrand";
+import { RbkHeader } from "../../components/RbkHeader";
 import { createClient } from "../../lib/supabase/client";
 
 type Usuario = {
@@ -105,25 +104,7 @@ export default function Dashboard() {
 
   return (
     <main className="min-h-screen bg-[#f6f7f8]">
-      <header className="rbk-topbar">
-        <div className="mx-auto flex min-h-[96px] max-w-[1320px] items-center justify-between gap-6 px-6 lg:px-8">
-          <RbkBrand compact light />
-
-          <div className="flex items-center gap-5">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold text-gray-700">
-                Gestor RBK
-              </p>
-
-              <p className="mt-1 text-sm text-gray-500">
-                {email}
-              </p>
-            </div>
-
-            <GestorLogout />
-          </div>
-        </div>
-      </header>
+      <RbkHeader email={email} />
 
       <div className="mx-auto max-w-[1320px] px-6 py-10 lg:px-8">
         <div className="mb-8">

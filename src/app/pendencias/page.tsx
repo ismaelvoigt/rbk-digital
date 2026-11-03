@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { RbkBrand } from "../../components/RbkBrand";
+import { RbkHeader } from "../../components/RbkHeader";
 import { getPendenciasDocumentais, type DocumentoStatus } from "../../lib/documentos/pendencias";
 import { createClient } from "../../lib/supabase/client";
 
@@ -63,12 +63,9 @@ export default function PendenciasPage() {
 
   return (
     <main className="rbk-shell min-h-screen">
-      <header className="rbk-header">
-        <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
-          <RbkBrand compact light />
-          <Link href="/farmacia" className="text-sm font-bold text-gray-600">← Voltar ao início</Link>
-        </div>
-      </header>
+      <RbkHeader>
+        <Link href="/farmacia" className="text-sm font-bold text-gray-600">← Voltar ao início</Link>
+      </RbkHeader>
       <div className="rbk-container py-8 sm:py-10">
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-red-600">Rotina da farmácia</p>
         <h1 className="mt-2 text-3xl font-bold text-gray-900">Pendências</h1>

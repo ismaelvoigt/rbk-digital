@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { RbkHeader } from "../../../../components/RbkHeader";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useRetornoFarmacias } from "../../../../lib/usuarios/useRetornoFarmacias";
@@ -110,6 +111,7 @@ function AutorizacoesUsuario({ usuarioId }: { usuarioId: string }) {
       farmacia?.nome_fantasia || farmacia?.razao_social || "Farmácia";
   return (
     <main className="min-h-screen bg-gray-50">
+      <RbkHeader />
       <div className="mx-auto max-w-7xl px-6 py-10">
         <nav aria-label="Navegação de farmácias" className="mb-5">
           <Link href={retorno} className="text-sm text-gray-600">

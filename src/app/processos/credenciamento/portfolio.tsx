@@ -3,7 +3,7 @@ import { formatCnpj } from "../../../lib/processos/cnpj";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { RbkBrand } from "../../../components/RbkBrand";
+import { RbkHeader } from "../../../components/RbkHeader";
 import { fields, summarize, TYPES } from "../../../lib/processos/domain";
 import { api, type Portfolio } from "../../../lib/processos/client";
 import ProcessDetail from "./process-detail";
@@ -38,11 +38,7 @@ export default function Credenciamento({ id }: { id: string }) {
   }
   return (
     <main className="rbk-shell min-h-screen">
-      <header className="rbk-header">
-        <div className="rbk-container flex min-h-[76px] items-center justify-between">
-          <RbkBrand compact light />
-        </div>
-      </header>
+      <RbkHeader />
       <div className="rbk-container py-8">
         <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">
           ← Voltar ao Dashboard

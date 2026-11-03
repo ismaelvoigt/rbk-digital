@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { filtroFarmacias, queryFarmacias } from "../../lib/usuarios/navegacao";
 import { createClient } from "../../lib/supabase/client";
 import { ExcluirFarmacia } from "../../components/ExcluirFarmacia";
-import { RbkBrand } from "../../components/RbkBrand";
+import { RbkHeader } from "../../components/RbkHeader";
 
 type Usuario = {
   id: string;
@@ -255,11 +255,7 @@ export default function UsuariosPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <header className="rbk-topbar">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-5">
-          <RbkBrand light />
-        </div>
-      </header>
+      <RbkHeader />
 
       <div className="mx-auto max-w-7xl px-6 py-10">
         <div className="mb-8">

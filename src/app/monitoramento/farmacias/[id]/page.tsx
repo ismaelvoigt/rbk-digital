@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { RbkBrand } from "../../../../components/RbkBrand";
+import { RbkHeader } from "../../../../components/RbkHeader";
 import { createClient } from "../../../../lib/supabase/client";
 
 type Farm = { id: string; razao_social: string; nome_fantasia: string | null; cnpj: string };
@@ -53,12 +53,9 @@ export default function FarmMonitoringPage() {
 
   return (
     <main className="rbk-shell min-h-screen">
-      <header className="rbk-header">
-        <div className="rbk-container flex min-h-[76px] items-center justify-between gap-4">
-          <RbkBrand compact light />
-          <Link href="/monitoramento" className="text-sm font-bold text-gray-600">← Monitoramento</Link>
-        </div>
-      </header>
+      <RbkHeader>
+        <Link href="/monitoramento" className="text-sm font-bold text-gray-600">← Monitoramento</Link>
+      </RbkHeader>
       <div className="rbk-container py-8 sm:py-10">
         <Link href="/dashboard" className="mb-4 inline-block text-sm font-bold text-red-700">← Voltar ao Dashboard</Link>
         {loading && <p className="text-sm text-gray-600">Carregando farmácia...</p>}
