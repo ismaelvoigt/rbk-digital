@@ -109,3 +109,10 @@ it("permite produção somente com ativação e referência próprias, sem herda
     expect(() => assertStaging({...env,...patch})).toThrow();
   }
 });
+it('mantém os formatos existentes e recebe ZIP como arquivo único',()=>{
+ const base={id:crypto.randomUUID(),size:100,fingerprint:'f'.repeat(64)};
+ for(const [name,mime] of [['teste.pdf','application/pdf'],['teste.jpg','image/jpeg'],['teste.png','image/png'],['teste.tiff','image/tiff'],['documentos.ZIP','application/zip'],['documentos.RAR','application/vnd.rar']])expect(validateFiles([{...base,name,mime}])).toHaveLength(1);
+ expect(()=>validateFiles([{...base,name:'documentos.zip',mime:'application/pdf'}])).toThrow();
+});
+
+it('mantém limite de tamanho e não libera compactados como ofício',()=>{const f={id:crypto.randomUUID(),name:'documentos.rar',size:104857601,mime:'application/vnd.rar',fingerprint:'c'.repeat(64)};expect(()=>validateFiles([f])).toThrow();expect(()=>validateFiles([{...f,size:100}],true)).toThrow();});

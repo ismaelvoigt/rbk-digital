@@ -502,3 +502,15 @@ it("CNPJ fictício requer configuração privada e mantém 14 números e isolame
  await expect(register(payload)).rejects.toThrow("Cadastro indisponível");
  await db.exec(`set test.uid='${id(1)}'`);
 });
+it('recebe ZIP sem extrair e preserva os formatos anteriores após a migração',async()=>{
+ await db.exec('reset role');await db.exec(readFileSync('supabase/migrations/20261105192615_auditoria_recebimento_zip.sql','utf8'));
+ await db.exec(`set role authenticated;set test.uid='${id(1)}'`);
+ const a=(await manager('create',{farm_id:id(10),reference:'Recebimento ZIP'},null)).id,h=crypto.randomUUID().replace(/-/g,'').repeat(2);await manager('link',{hash:h,days:40},a);
+ const fid=crypto.randomUUID();const r=await portal('begin',{key:crypto.randomUUID(),files:[{id:fid,name:'documentos.ZIP',size:100,mime:'application/zip',fingerprint:'3'.repeat(64)}]},h);
+ await expect(portal('complete',{batch_id:r.id},h)).rejects.toThrow();
+ expect(r.files[0].id).toBe(fid);expect((await portal('ticket',{file_id:fid},h)).mime).toBe('application/zip');
+ const rarId=crypto.randomUUID();const rar=await portal('begin',{key:crypto.randomUUID(),files:[{id:rarId,name:'documentos.RAR',size:200,mime:'application/vnd.rar',fingerprint:'4'.repeat(64)}]},h);expect(rar.files[0].id).toBe(rarId);expect((await portal('ticket',{file_id:rarId},h)).mime).toBe('application/vnd.rar');
+ await db.exec('reset role');const stored=await db.query<{mime:string,size:number}>('select mime,size from public.aud_files where id=$1',[fid]);expect(stored.rows[0].mime).toBe('application/zip');expect(Number(stored.rows[0].size)).toBe(100);
+ const bucket=await db.query<{allowed_mime_types:string[]}>('select allowed_mime_types from storage.buckets where id=$1',['auditoria-private']);expect(bucket.rows[0].allowed_mime_types).toContain('application/pdf');expect(bucket.rows[0].allowed_mime_types).toContain('application/zip');expect(bucket.rows[0].allowed_mime_types).toContain('application/vnd.rar');
+ await db.exec('set role authenticated');
+});
