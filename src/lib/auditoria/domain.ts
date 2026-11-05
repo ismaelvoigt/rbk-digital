@@ -1,7 +1,7 @@
 import type { DeliveryEvent } from "../convites/types";
 export const BUCKET = "auditoria-private";
 export const MAX_FILE = 100 * 1024 * 1024;
-export const MIME: Record<string, string> = {
+const DOCUMENT_MIME: Record<string, string> = {
   pdf: "application/pdf",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
@@ -9,7 +9,8 @@ export const MIME: Record<string, string> = {
   tif: "image/tiff",
   tiff: "image/tiff",
 };
-export const OFFICE_MIME: Record<string, string> = { ...MIME, html: "text/html", htm: "text/html" };
+export const MIME: Record<string, string> = { ...DOCUMENT_MIME, zip: "application/zip", rar: "application/vnd.rar" };
+export const OFFICE_MIME: Record<string, string> = { ...DOCUMENT_MIME, html: "text/html", htm: "text/html" };
 export type ManifestFile = {
   id: string;
   name: string;

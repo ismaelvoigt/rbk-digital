@@ -100,7 +100,7 @@ export default function Portal() {
         const mime = MIME[file.name.split(".").pop()?.toLowerCase() || ""];
         if (!mime || file.size < 1 || file.size > MAX_FILE)
           throw new Error(
-            "Aceitos PDF, JPG, PNG e TIFF de até 100 MB cada. ZIP não é aceito.",
+            "Aceitos PDF, JPG, PNG, TIFF, ZIP e RAR de até 100 MB cada.",
           );
         manifest.push({
           id: crypto.randomUUID(),
@@ -233,9 +233,8 @@ export default function Portal() {
                     : "+ Adicionar documentos"}
                 </h2>
                 <p>
-                  PDF, JPG, PNG ou TIFF. Até 100 MB por arquivo e 100 arquivos
-                  por lote. Se estiverem em ZIP, descompacte antes de selecionar
-                  os arquivos.
+                  PDF, JPG, PNG, TIFF, ZIP ou RAR. Até 100 MB por arquivo e 100 arquivos
+                  por lote. ZIP e RAR são recebidos como arquivos únicos, sem extração automática.
                 </p>
                 {draft && (
                   <p className="aud-notice">
@@ -253,7 +252,7 @@ export default function Portal() {
                     ref={fileInput}
                     aria-label="Selecionar documentos"
                     type="file"
-                    accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff"
+                    accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff,.zip,.rar"
                     multiple
                     disabled={busy}
                     onChange={(e) => {
