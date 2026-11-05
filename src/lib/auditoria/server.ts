@@ -76,7 +76,7 @@ export function validateFiles(input: unknown, office = false): ManifestFile[] {
     )
       throw new PortalError(
         400,
-        `Arquivo inválido, repetido ou acima de 100 MB. Aceitos PDF, ${office ? "HTML, " : ""}JPG, PNG e TIFF.`,
+        `Arquivo inválido, repetido ou acima de 100 MB. Aceitos ${office ? "PDF, HTML, JPG, PNG e TIFF" : "PDF, JPG, PNG, TIFF, ZIP e RAR"}.`,
       );
     ids.add(f.id);
     hashes.add(f.fingerprint);

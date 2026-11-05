@@ -85,7 +85,11 @@ for (const f of files) {
               ? ["49492a00", "4d4d002a"].includes(
                   head.subarray(0, 4).toString("hex"),
                 )
-              : f.mime === "text/html" && f.source === "office"
+              : f.mime === "application/zip"
+                ? ["504b0304", "504b0506", "504b0708"].includes(head.subarray(0,4).toString("hex"))
+                : f.mime === "application/vnd.rar"
+                  ? head.subarray(0,7).toString("hex") === "526172211a0700" || head.toString("hex") === "526172211a070100"
+                  : f.mime === "text/html" && f.source === "office"
                 ? !content.includes(0) && /<(?:!doctype\s+html|html|head|body)(?:\s|>)/i.test(content.subarray(0, 4096).toString("utf8"))
                 : false;
     if (!matches) throw Object.assign(Error("signature"), { terminal: true });
